@@ -1,0 +1,86 @@
+name: Update Formula
+
+on:
+  repository_dispatch:
+    types: [release-published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g., v0.1.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "tag=${{ github.event.client_payload.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download checksums
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          VERSION="${TAG#v}"
+          curl -sL "https://github.com/hyper-swe/mtix/releases/download/${TAG}/checksums.txt" -o checksums.txt
+          cat checksums.txt
+
+      - name: Update formula
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          VERSION="${TAG#v}"
+
+          get_sha() {
+            grep "$1" checksums.txt | awk '{print $1}'
+          }
+
+          DARWIN_ARM64=$(get_sha "darwin_arm64")
+          DARWIN_AMD64=$(get_sha "darwin_amd64")
+          LINUX_ARM64=$(get_sha "linux_arm64")
+          LINUX_AMD64=$(get_sha "linux_amd64")
+
+          # Update version
+          sed -i "s/version \".*\"/version \"${VERSION}\"/" Formula/mtix.rb
+
+          # Update SHA256 values (in order of appearance in the formula)
+          python3 -c "
+          import re
+          with open('Formula/mtix.rb', 'r') as f:
+              content = f.read()
+
+          shas = ['${DARWIN_ARM64}', '${DARWIN_AMD64}', '${LINUX_ARM64}', '${LINUX_AMD64}']
+          idx = 0
+          def replace_sha(m):
+              global idx
+              result = f'sha256 \"{shas[idx]}\"'
+              idx += 1
+              return result
+
+          content = re.sub(r'sha256 \"[A-Fa-f0-9]+\"', replace_sha, content)
+          content = re.sub(r'sha256 \"PLACEHOLDER\"', replace_sha, content)
+
+          with open('Formula/mtix.rb', 'w') as f:
+              f.write(content)
+          "
+
+          echo "Updated Formula/mtix.rb to ${VERSION}"
+          cat Formula/mtix.rb
+
+      - name: Commit and push
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/mtix.rb
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Update mtix to ${TAG}"
+          git push
