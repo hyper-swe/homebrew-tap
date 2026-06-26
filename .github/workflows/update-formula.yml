@@ -1,12 +1,20 @@
 name: Update Formula
 
+# Project-aware: a release in any hyper-swe project dispatches release-published
+# with client_payload {project, tag}; this updates Formula/<project>.rb from
+# that project's release checksums. Previously hardcoded to mtix, which caused
+# an mgit release to clobber the mtix formula — fixed by keying off `project`.
 on:
   repository_dispatch:
     types: [release-published]
   workflow_dispatch:
     inputs:
+      project:
+        description: "Project to update (mtix or mgit)"
+        required: true
+        default: mtix
       tag:
-        description: "Release tag (e.g., v0.1.0)"
+        description: "Release tag (e.g., v0.2.0-beta)"
         required: true
 
 permissions:
@@ -15,72 +23,71 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-22.04
+    env:
+      # Passed via env (not inline ${{ }} in run scripts) and validated below,
+      # so a payload value can never be interpolated into a shell command.
+      PROJECT: ${{ github.event.client_payload.project || inputs.project }}
+      TAG: ${{ github.event.client_payload.tag || inputs.tag }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Determine tag
-        id: tag
+      - name: Validate inputs
         run: |
-          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-            echo "tag=${{ github.event.client_payload.tag }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
-          fi
+          case "$PROJECT" in
+            mtix|mgit) ;;
+            *) echo "::error::unknown project '$PROJECT' (expected mtix or mgit)"; exit 1 ;;
+          esac
+          case "$TAG" in
+            v[0-9]*) ;;
+            *) echo "::error::tag '$TAG' must look like vX.Y.Z"; exit 1 ;;
+          esac
+          test -f "Formula/${PROJECT}.rb" || { echo "::error::Formula/${PROJECT}.rb not found"; exit 1; }
 
       - name: Download checksums
         run: |
-          TAG="${{ steps.tag.outputs.tag }}"
-          VERSION="${TAG#v}"
-          curl -sL "https://github.com/hyper-swe/mtix/releases/download/${TAG}/checksums.txt" -o checksums.txt
+          # --fail so a wrong project/tag (404) aborts instead of silently
+          # writing blank checksums into a formula.
+          curl -sSL --fail "https://github.com/hyper-swe/${PROJECT}/releases/download/${TAG}/checksums.txt" -o checksums.txt
           cat checksums.txt
 
       - name: Update formula
         run: |
-          TAG="${{ steps.tag.outputs.tag }}"
           VERSION="${TAG#v}"
-
-          get_sha() {
-            grep "$1" checksums.txt | awk '{print $1}'
-          }
-
+          FORMULA="Formula/${PROJECT}.rb"
+          get_sha() { grep "$1" checksums.txt | awk '{print $1}'; }
           DARWIN_ARM64=$(get_sha "darwin_arm64")
           DARWIN_AMD64=$(get_sha "darwin_amd64")
           LINUX_ARM64=$(get_sha "linux_arm64")
           LINUX_AMD64=$(get_sha "linux_amd64")
+          export VERSION FORMULA DARWIN_ARM64 DARWIN_AMD64 LINUX_ARM64 LINUX_AMD64
 
-          # Update version
-          sed -i "s/version \".*\"/version \"${VERSION}\"/" Formula/mtix.rb
+          sed -i "s/version \".*\"/version \"${VERSION}\"/" "$FORMULA"
 
-          # Update SHA256 values (in order of appearance in the formula)
-          python3 -c "
-          import re
-          with open('Formula/mtix.rb', 'r') as f:
-              content = f.read()
+          # Replace the four sha256 values in formula order: darwin arm/intel,
+          # linux arm/intel. Refuse to write if any checksum is missing.
+          python3 - <<'PY'
+          import os, re
+          formula = os.environ["FORMULA"]
+          shas = [os.environ["DARWIN_ARM64"], os.environ["DARWIN_AMD64"],
+                  os.environ["LINUX_ARM64"], os.environ["LINUX_AMD64"]]
+          if not all(shas):
+              raise SystemExit("missing checksum(s); refusing to write a blank sha256")
+          with open(formula) as fh:
+              content = fh.read()
+          it = iter(shas)
+          content = re.sub(r'sha256 "[A-Fa-f0-9]*"', lambda _m: f'sha256 "{next(it)}"', content)
+          with open(formula, "w") as fh:
+              fh.write(content)
+          PY
 
-          shas = ['${DARWIN_ARM64}', '${DARWIN_AMD64}', '${LINUX_ARM64}', '${LINUX_AMD64}']
-          idx = 0
-          def replace_sha(m):
-              global idx
-              result = f'sha256 \"{shas[idx]}\"'
-              idx += 1
-              return result
-
-          content = re.sub(r'sha256 \"[A-Fa-f0-9]+\"', replace_sha, content)
-          content = re.sub(r'sha256 \"PLACEHOLDER\"', replace_sha, content)
-
-          with open('Formula/mtix.rb', 'w') as f:
-              f.write(content)
-          "
-
-          echo "Updated Formula/mtix.rb to ${VERSION}"
-          cat Formula/mtix.rb
+          echo "Updated ${FORMULA} to ${VERSION}"
+          cat "$FORMULA"
 
       - name: Commit and push
         run: |
-          TAG="${{ steps.tag.outputs.tag }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/mtix.rb
+          git add "Formula/${PROJECT}.rb"
           git diff --cached --quiet && echo "No changes" && exit 0
-          git commit -m "Update mtix to ${TAG}"
+          git commit -m "Update ${PROJECT} to ${TAG}"
           git push
