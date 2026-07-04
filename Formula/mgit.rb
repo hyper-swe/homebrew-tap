@@ -28,6 +28,10 @@ class Mgit < Formula
 
   def install
     bin.install "mgit"
+    # mgit-sandboxd (the sandbox host daemon) ships in the Linux and
+    # macOS-arm64 archives only; File.exist? keeps one body correct across
+    # all four bottles (Intel macOS is mgit-only). Refs: mgit MGIT-44.
+    bin.install "mgit-sandboxd" if File.exist?("mgit-sandboxd")
   end
 
   test do
