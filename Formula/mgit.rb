@@ -2,27 +2,27 @@ class Mgit < Formula
   desc "Sandboxed, checkpointed working substrate for LLM coding agents"
   homepage "https://github.com/hyper-swe/mgit"
   license "Apache-2.0"
-  version "0.3.0-beta"
+  version "0.3.1-beta"
 
   on_macos do
     on_arm do
       url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_darwin_arm64.tar.gz"
-      sha256 "99f4d30d5f0ffa234ca04495948985b6055fcf96063a50bf56cd37a99c89e045"
+      sha256 "2f3b0a1fe032900a311c92a5f4e9e15623ab86cf329a5bb972550f0876c60b2f"
     end
     on_intel do
       url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_darwin_amd64.tar.gz"
-      sha256 "dcedefc576829a8dabc26bd52418ff642ee32d553f04af6d659b615cc8d752dd"
+      sha256 "ab016e0f626b1b05ae4a7b24ef049bebf95e5a008ddf0391b7640386f67c00b5"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_linux_arm64.tar.gz"
-      sha256 "52db500d7f77fac7745d45e649a50cf6ecd5370c0c3c50679b3a52eecae7d236"
+      sha256 "50a47bed9852fccf8558528b46a4f8106bf8e8a18e4489107a9bb9a811493946"
     end
     on_intel do
       url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_linux_amd64.tar.gz"
-      sha256 "00ad6a8ecb4fb2624a4b3daa22cd5cc8bfe24161cc1e1aa5fde251f667b4d182"
+      sha256 "6dd573533bdc6d3516f33be8a81f98185c505721a80c2f0cfdfca117d7ba9cff"
     end
   end
 
