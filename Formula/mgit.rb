@@ -1,8 +1,8 @@
 class Mgit < Formula
   desc "Sandboxed, checkpointed working substrate for LLM coding agents"
   homepage "https://github.com/hyper-swe/mgit"
-  license "Apache-2.0"
   version "0.3.1-beta"
+  license "Apache-2.0"
 
   on_macos do
     on_arm do
@@ -32,6 +32,22 @@ class Mgit < Formula
     # macOS-arm64 archives only; File.exist? keeps one body correct across
     # all four bottles (Intel macOS is mgit-only). Refs: mgit MGIT-44.
     bin.install "mgit-sandboxd" if File.exist?("mgit-sandboxd")
+  end
+
+  def caveats
+    <<~EOS
+      Core mgit (init, commit, worktrees, squash, land) is ready to use.
+
+      To activate the microVM sandbox (mgit run, mgit work --sandbox):
+        1. Prerequisites:
+           - Linux: KVM (/dev/kvm) and the `firecracker` binary on PATH
+           - macOS: Apple Silicon (arm64), macOS 13 or later
+           (Windows and Intel macOS have no sandbox backend yet)
+        2. From inside a repo, install a pinned, signed guest image:
+             mgit sandbox image install
+
+      Guide: https://github.com/hyper-swe/mgit/blob/main/docs/INSTALL-SANDBOX.md
+    EOS
   end
 
   test do
