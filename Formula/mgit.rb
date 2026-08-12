@@ -15,27 +15,27 @@ class Mgit < Formula
   # valid (obviously fake) sha256-shaped placeholder the real regex actually
   # replaces. Never hand-edit these four lines; they are correct only right
   # after a real release's automated update.
-  version "0.4.4"
+  version "0.4.5"
 
   on_macos do
     on_arm do
       url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_darwin_arm64.tar.gz"
-      sha256 "024152897b8c715f8ee0d2203b42b41d86d772e80abd712aadfe042e182ec1f0"
+      sha256 "ad42206651b52777a1bb5fc10b521fc6fbb7eee1ad2910b293ce0e85b22a9f5d"
     end
     on_intel do
       url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_darwin_amd64.tar.gz"
-      sha256 "b93b51a6c51883e5a75fbe8498b9b6f780e29f8ea19a62b2126ed403f9911083"
+      sha256 "6ef86b1d315f4cb75105c343b799c90b7cd4827f3b483de167a4d691894d582c"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_linux_arm64.tar.gz"
-      sha256 "1ff630516f4a68f572c4a30eec9d53a946ea19d63b0349515e402941bc38a0f9"
+      sha256 "7b46c37b4c17fd6c497e0005e89046c58b1078686123a626a1ce4026acf2d8e6"
     end
     on_intel do
       url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_linux_amd64.tar.gz"
-      sha256 "1bd62a81ce38632d0cd8856ae28832a9a9d78abd08ad97b9ec21185d00581455"
+      sha256 "43112f581287daa36f4dd33ddb325e9e1e9a50b9160be9bb72d0899b58831570"
     end
   end
 
