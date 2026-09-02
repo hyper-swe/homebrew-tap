@@ -2,27 +2,27 @@ class Mtix < Formula
   desc "AI-native micro issue manager for code-generating LLMs"
   homepage "https://github.com/hyper-swe/mtix"
   license "Apache-2.0"
-  version "0.5.0-beta"
+  version "0.5.1-beta"
 
   on_macos do
     on_arm do
       url "https://github.com/hyper-swe/mtix/releases/download/v#{version}/mtix_#{version}_darwin_arm64.tar.gz"
-      sha256 "8c88230128cf900153753c129d758979b26138bcd18db925b12ca6fe6b42a6c7"
+      sha256 "ecf73cc3cd878d259b0fa38104c23d22d39b3cd6cee4dd51092bce71df534000"
     end
     on_intel do
       url "https://github.com/hyper-swe/mtix/releases/download/v#{version}/mtix_#{version}_darwin_amd64.tar.gz"
-      sha256 "c27c76ef8efedfc02e89b99e64149d8659e4f5d216aff508b22666fb2e4c9a09"
+      sha256 "2bc537e940526cd80b7cf3f3da1e05732356ac3ec00541ab1db8e46db07d3a02"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/hyper-swe/mtix/releases/download/v#{version}/mtix_#{version}_linux_arm64.tar.gz"
-      sha256 "2e5e6a09a26cc87f14d64588145a935b74f923857670fd855ba453ceb1ed3198"
+      sha256 "f934532bec1cd2bf5ccbd19c0e7fc7e5767abad3ba046e389bb1bc439096fb1e"
     end
     on_intel do
       url "https://github.com/hyper-swe/mtix/releases/download/v#{version}/mtix_#{version}_linux_amd64.tar.gz"
-      sha256 "ece081f9afacf5072beeeddbd70d34a6117a0036fe061d4e0a51b9ba1af00365"
+      sha256 "dde70c02fe2ba1966d5f44d11599485383a4a40d703510b8e6e4b6653b893db6"
     end
   end
 
