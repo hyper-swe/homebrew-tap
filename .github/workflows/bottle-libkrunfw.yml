@@ -1,0 +1,89 @@
+name: Bottle libkrunfw
+
+# Builds a bottle of Formula/libkrunfw.rb on an Apple silicon runner when a
+# pull request changes it, tests it, and attaches the bottle to the run as an
+# artifact.
+#
+# It does NOT publish anything: no release, no upload to a bottle host, no
+# push. The formula carries no bottle block yet, so `brew install` builds it
+# from source until a maintainer wires up publishing and adds that block.
+on:
+  pull_request:
+    paths:
+      - Formula/libkrunfw.rb
+      - .github/workflows/bottle-libkrunfw.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bottle:
+    name: Bottle (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # Apple silicon only: the formula depends on arm64 macOS.
+        runner: [macos-14, macos-15]
+    runs-on: ${{ matrix.runner }}
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_FROM_API: "1"
+      HOMEBREW_NO_ANALYTICS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Serve this checkout as hyper-swe/tap, so the formula is built and
+      # tested exactly as it is in this pull request.
+      - name: Use this checkout as the hyper-swe/tap tap
+        run: |
+          taps="$(brew --repository)/Library/Taps/hyper-swe"
+          mkdir -p "$taps"
+          rm -rf "$taps/homebrew-tap"
+          ln -s "$GITHUB_WORKSPACE" "$taps/homebrew-tap"
+          brew trust hyper-swe/tap
+
+      - name: Style and audit
+        run: |
+          brew style hyper-swe/tap/libkrunfw
+          brew audit --strict --new --formula hyper-swe/tap/libkrunfw
+
+      # The source offer keeps the maintainers' open decisions as
+      # placeholders. Say so on every run, so a bottle built from this
+      # formula is never mistaken for one that is ready to publish.
+      - name: Report open license placeholders
+        run: |
+          if grep -n "TODO(maintainer)" Formula/libkrunfw.rb; then
+            echo "::warning file=Formula/libkrunfw.rb::the source offer still has TODO(maintainer) placeholders; this bottle is not ready to publish"
+          fi
+
+      - name: Build
+        run: brew install --build-bottle --verbose hyper-swe/tap/libkrunfw
+
+      - name: Test
+        run: brew test --verbose hyper-swe/tap/libkrunfw
+
+      - name: Check the keg contents
+        run: |
+          keg="$(brew --prefix hyper-swe/tap/libkrunfw)"
+          for f in lib/libkrunfw.5.dylib LICENSE-GPL-2.0-only LICENSE-LGPL-2.1-only NOTICE.txt SOURCE-OFFER.txt; do
+            test -e "$keg/$f" || { echo "::error::$f is missing from the keg"; exit 1; }
+          done
+          # Linked into the prefix, where mgit's sandbox looks for it.
+          test -e "$(brew --prefix)/lib/libkrunfw.5.dylib" || { echo "::error::libkrunfw.5.dylib is not linked into $(brew --prefix)/lib"; exit 1; }
+
+      - name: Bottle
+        run: |
+          mkdir -p bottles
+          cd bottles
+          brew bottle --json --verbose hyper-swe/tap/libkrunfw
+          ls -l
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: libkrunfw-bottle-${{ matrix.runner }}
+          path: bottles/
+          if-no-files-found: error
+          retention-days: 14
