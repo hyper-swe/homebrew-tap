@@ -6,7 +6,7 @@ class Libkrunfw < Formula
   #   libkrunfw-prebuilt-aarch64.tgz  the generated kernel.c (the compiled
   #                                   aarch64 guest kernel, linux-6.12.91,
   #                                   as a C array), bin2cbundle.py, a
-  #                                   Makefile and both licence texts
+  #                                   Makefile and both license texts
   #   libkrunfw-aarch64.tgz           a built Linux aarch64 libkrunfw.so
   #   libkrunfw-x86_64.tgz            a built Linux x86_64 libkrunfw.so
   #
@@ -21,7 +21,7 @@ class Libkrunfw < Formula
   #
   # TODO(maintainer): decide whether to keep building from this prebuilt
   # kernel image or to build the kernel from source on a Linux builder
-  # (decision c). The licence duty is the same either way.
+  # (decision c). The license duty is the same either way.
   #
   # The sha256 below was computed from the bytes downloaded from the URL;
   # it was not checked against a digest the publisher states.
@@ -59,7 +59,7 @@ class Libkrunfw < Formula
       library that bundles a Linux kernel (linux-#{kernel_version}) as a storage
       format. Its library code is distributed under LGPL-2.1-only, and the
       bundled kernel and the patches applied to it under GPL-2.0-only; the
-      licence texts are LICENSE-LGPL-2.1-only and LICENSE-GPL-2.0-only in this
+      license texts are LICENSE-LGPL-2.1-only and LICENSE-GPL-2.0-only in this
       directory. libkrunfw is a separate library, installed on its own, and is
       not part of any product that loads it.
     EOS

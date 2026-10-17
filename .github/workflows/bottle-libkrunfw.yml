@@ -53,7 +53,7 @@ jobs:
       # The source offer keeps the maintainers' open decisions as
       # placeholders. Say so on every run, so a bottle built from this
       # formula is never mistaken for one that is ready to publish.
-      - name: Report open licence placeholders
+      - name: Report open license placeholders
         run: |
           if grep -n "TODO(maintainer)" Formula/libkrunfw.rb; then
             echo "::warning file=Formula/libkrunfw.rb::the source offer still has TODO(maintainer) placeholders; this bottle is not ready to publish"
