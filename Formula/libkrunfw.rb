@@ -19,9 +19,9 @@ class Libkrunfw < Formula
   # (the kernel tarball, upstream's patches and its kernel config), not by
   # this download.
   #
-  # TODO(maintainer): decide whether to keep building from this prebuilt
-  # kernel image or to build the kernel from source on a Linux builder
-  # (decision c). The license duty is the same either way.
+  # Decided: for the beta this builds from upstream's prebuilt kernel image;
+  # the hosted source holds that exact asset. The license duty is the same
+  # if the kernel is later built from source.
   #
   # The sha256 below was computed from the bytes downloaded from the URL;
   # it was not checked against a digest the publisher states.
@@ -68,11 +68,8 @@ class Libkrunfw < Formula
   # The source offer. Items 3 and 4, the retention period and the contact
   # address are open decisions, kept as placeholders:
   #
-  # TODO(maintainer): decision a. Host the single source archive (item 4)
-  #   beside the bottle, or rely on the upstream URLs only.
-  # TODO(maintainer): decision b. How long the source stays available. The
-  #   text below states the GPLv2 section 3(b) floor.
-  # TODO(maintainer): decision d. The contact address for the offer.
+  # Decided: the source is hosted by the mgit release (item 4) and kept for
+  # the life of the release; the contact address is swe@hyperswe.com.
   # TODO(maintainer): decision e. Whether a lawyer reviews this text before
   #   the formula is published.
   def source_offer
@@ -89,12 +86,16 @@ class Libkrunfw < Formula
            https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-#{kernel_version}.tar.xz
         3. Our build patches and build script, if any:
            TODO(maintainer): URL of the hyper-swe repository path, pinned to a tag
-        4. A single archive holding items 1-3 with checksums:
-           TODO(maintainer): URL of the release asset, same release as the binary
+        4. The same source, hosted by the mgit release that ships this library
+           (https://github.com/hyper-swe/mgit/releases), listed with checksums
+           in that release's checksums.txt: libkrunfw-v#{version}-kernel-linux-#{kernel_version}.tar.xz,
+           libkrunfw-v#{version}-source.tar.gz and
+           libkrunfw-v#{version}-prebuilt-aarch64.tgz
 
       This offer is valid for at least three years from the date the binary
-      was last distributed, and for as long as the binary is offered.
-      Questions: TODO(maintainer): contact address.
+      was last distributed, and for as long as the binary is offered; the
+      hosted source is kept for the life of the release.
+      Questions, or a copy on other media: swe@hyperswe.com.
     EOS
   end
 
