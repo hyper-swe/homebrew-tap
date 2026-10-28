@@ -65,13 +65,10 @@ class Libkrunfw < Formula
     EOS
   end
 
-  # The source offer. Items 3 and 4, the retention period and the contact
-  # address are open decisions, kept as placeholders:
-  #
-  # Decided: the source is hosted by the mgit release (item 4) and kept for
-  # the life of the release; the contact address is swe@hyperswe.com.
-  # TODO(maintainer): decision e. Whether a lawyer reviews this text before
-  #   the formula is published.
+  # The source offer. Decided: the source is hosted by the mgit release
+  # (item 4) and kept for the life of the release; the contact address is
+  # swe@hyperswe.com. Item 3 stays a placeholder until the maintainer names
+  # the URL of the build patches and script.
   def source_offer
     <<~EOS
       libkrunfw #{version} is distributed under LGPL-2.1-only for the library code
