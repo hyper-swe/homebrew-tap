@@ -30,11 +30,13 @@ brew install hyper-swe/tap/hyperswe
 | [mgit](https://github.com/hyper-swe/mgit) | A sandboxed, checkpointed working substrate for coding agents built on large language models (LLMs). On Apple silicon macOS it depends on `libkrunfw` for its microVM sandbox (a small virtual machine). |
 | [mtix](https://github.com/hyper-swe/mtix) | A micro issue manager for code-generating large language models (LLMs). |
 | [hyperswe](https://github.com/hyper-swe/releases) | Runs coding agents through a reviewed loop. |
-| [libkrunfw](https://github.com/containers/libkrunfw) | The library that carries the guest Linux kernel for mgit's microVM sandbox on Apple silicon macOS. Built from upstream release v5.5.0. |
+| [libkrunfw](https://github.com/libkrun/libkrunfw) | The library that carries the guest Linux kernel for mgit's microVM sandbox on Apple silicon macOS. Built from upstream release v5.5.0. |
 
 ## libkrunfw and its licenses
 
-libkrunfw is an upstream library, not part of mgit. Its library code is
+libkrunfw is an upstream library, distributed separately from mgit's macOS archive.
+Its complete source is published at
+https://github.com/hyper-swe/homebrew-tap/releases/tag/libkrunfw-5.5.0. Its library code is
 distributed under LGPL-2.1-only, and the Linux kernel it bundles, with the
 patches applied to it, under GPL-2.0-only. The formula's license field is
 `LGPL-2.1-only AND GPL-2.0-only`.

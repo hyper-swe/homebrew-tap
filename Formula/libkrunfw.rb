@@ -1,6 +1,6 @@
 class Libkrunfw < Formula
   desc "Dynamic library bundling a Linux kernel in a convenient storage format"
-  homepage "https://github.com/containers/libkrunfw"
+  homepage "https://github.com/libkrun/libkrunfw"
   # Upstream publishes three archives for v5.5.0. This formula uses the first:
   #
   #   libkrunfw-prebuilt-aarch64.tgz  the generated kernel.c (the compiled
@@ -23,8 +23,8 @@ class Libkrunfw < Formula
   # the hosted source holds that exact asset. The license duty is the same
   # if the kernel is later built from source.
   #
-  # The sha256 below was computed from the bytes downloaded from the URL;
-  # it was not checked against a digest the publisher states.
+  # The sha256 below was computed from the downloaded bytes and matches the
+  # digest GitHub records for this asset on upstream's v5.5.0 release.
   url "https://github.com/containers/libkrunfw/releases/download/v5.5.0/libkrunfw-prebuilt-aarch64.tgz"
   sha256 "5bfae6efee63dbdf04a8fac2a69d772d9f900af2f54c4429b4acdfd6d86b9979"
   # Equals the SPDX expression "LGPL-2.1-only AND GPL-2.0-only": the library
@@ -55,20 +55,18 @@ class Libkrunfw < Formula
 
   def notice
     <<~EOS
-      libkrunfw #{version}, from https://github.com/containers/libkrunfw, is a
+      libkrunfw #{version}, from https://github.com/libkrun/libkrunfw, is a
       library that bundles a Linux kernel (linux-#{kernel_version}) as a storage
       format. Its library code is distributed under LGPL-2.1-only, and the
       bundled kernel and the patches applied to it under GPL-2.0-only; the
       license texts are LICENSE-LGPL-2.1-only and LICENSE-GPL-2.0-only in this
-      directory. libkrunfw is a separate library, installed on its own, and is
-      not part of any product that loads it.
+      directory. libkrunfw is a separate library, distributed separately from mgit.
     EOS
   end
 
-  # The source offer. Decided: the source is hosted by the mgit release
-  # (item 4) and kept for the life of the release; the contact address is
-  # swe@hyperswe.com. Item 3 stays a placeholder until the maintainer names
-  # the URL of the build patches and script.
+  # The source offer. Decided: the source is hosted in the same release as
+  # this library's binaries (item 4) and kept for the life of the release; the
+  # contact address is swe@hyperswe.com.
   def source_offer
     <<~EOS
       libkrunfw #{version} is distributed under LGPL-2.1-only for the library code
@@ -76,23 +74,28 @@ class Libkrunfw < Formula
       patches applied to it. The complete corresponding source is available
       to anyone, free of charge:
 
-        1. Upstream library, patches and configuration:
-           https://github.com/containers/libkrunfw/releases/tag/v#{version}
-           (source tarball, plus libkrunfw-prebuilt-aarch64.tgz)
+        1. Upstream libkrunfw source (library code, kernel patches, kernel
+           configuration and build scripts), tag v#{version}:
+           https://github.com/libkrun/libkrunfw/releases/tag/v#{version}
         2. The Linux kernel source the image was built from:
            https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-#{kernel_version}.tar.xz
-        3. Our build patches and build script, if any:
-           TODO(maintainer): URL of the hyper-swe repository path, pinned to a tag
-        4. The same source, hosted by the mgit release that ships this library
-           (https://github.com/hyper-swe/mgit/releases), listed with checksums
-           in that release's checksums.txt: libkrunfw-v#{version}-kernel-linux-#{kernel_version}.tar.xz,
-           libkrunfw-v#{version}-source.tar.gz and
-           libkrunfw-v#{version}-prebuilt-aarch64.tgz
+        3. We apply no patches of our own. This library was built from
+           upstream's prebuilt kernel image (libkrunfw-prebuilt-aarch64.tgz,
+           object code, sha256 5bfae6efee63dbdf04a8fac2a69d772d9f900af2f54c4429b4acdfd6d86b9979) by the build steps in:
+           https://github.com/hyper-swe/homebrew-tap/blob/5c359de9b9c9dc7870eed6a44bba6875b9152dbd/Formula/libkrunfw.rb
+        4. A copy of items 1 and 2, and of the prebuilt kernel image, kept by us
+           beside this library's binaries, with checksums:
+           https://github.com/hyper-swe/homebrew-tap/releases/tag/libkrunfw-#{version}
+           libkrunfw-v#{version}-kernel-linux-#{kernel_version}.tar.xz,
+           libkrunfw-v#{version}-source.tar.gz,
+           libkrunfw-v#{version}-prebuilt-aarch64.tgz (object code, for reference)
 
       This offer is valid for at least three years from the date the binary
       was last distributed, and for as long as the binary is offered; the
       hosted source is kept for the life of the release.
-      Questions, or a copy on other media: swe@hyperswe.com.
+      If any link above stops working, write to swe@hyperswe.com and we will
+      send the complete corresponding source, at no charge beyond the cost of
+      physically providing it. This offer is open to anyone who has this binary.
     EOS
   end
 
