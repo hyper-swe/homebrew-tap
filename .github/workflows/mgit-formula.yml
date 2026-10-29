@@ -70,7 +70,7 @@ jobs:
       - name: Style
         run: brew style hyper-swe/tap/mgit
 
-      - name: Audit (reported, not blocking: the redundant-version finding)
+      - name: Audit (reported, not blocking; the redundant-version finding)
         continue-on-error: true
         run: brew audit --strict --formula hyper-swe/tap/mgit
 
