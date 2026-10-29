@@ -1,7 +1,6 @@
 class Mgit < Formula
   desc "Sandboxed, checkpointed working substrate for LLM coding agents"
   homepage "https://github.com/hyper-swe/mgit"
-  license "Apache-2.0"
   # version + all four sha256 below are a template: the tap's own
   # update-formula.yml (hyper-swe/homebrew-tap) overwrites them at every real
   # release from that release's checksums.txt via a literal TEXT regex over
@@ -16,28 +15,7 @@ class Mgit < Formula
   # replaces. Never hand-edit these four lines; they are correct only right
   # after a real release's automated update.
   version "0.7.6"
-
-  on_macos do
-    on_arm do
-      url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_darwin_arm64.tar.gz"
-      sha256 "d22423ab959113586b3ed1c6832bdb1b156fc14fbf60a404bf11aa8853f1268c"
-    end
-    on_intel do
-      url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_darwin_amd64.tar.gz"
-      sha256 "2809df46d53d7dde780c272f5b136db94150d1c1da4c2381e428043d55726783"
-    end
-  end
-
-  on_linux do
-    on_arm do
-      url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_linux_arm64.tar.gz"
-      sha256 "781a2b93ef6ae255b40098f4b7f789c90e61d2351ff1baab4c995d99881789be"
-    end
-    on_intel do
-      url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_linux_amd64.tar.gz"
-      sha256 "f119573dd3c4194c102742a061f84804d598c7e73a8f612ec2ab06adc8a05934"
-    end
-  end
+  license "Apache-2.0"
 
   # libkrunfw, the library that carries the sandbox's guest kernel, comes from
   # this tap (hyper-swe/tap), never from mgit's archive: it is distributed
@@ -61,6 +39,23 @@ class Mgit < Formula
   on_macos do
     on_arm do
       depends_on "hyper-swe/tap/libkrunfw"
+      url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_darwin_arm64.tar.gz"
+      sha256 "d22423ab959113586b3ed1c6832bdb1b156fc14fbf60a404bf11aa8853f1268c"
+    end
+    on_intel do
+      url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_darwin_amd64.tar.gz"
+      sha256 "2809df46d53d7dde780c272f5b136db94150d1c1da4c2381e428043d55726783"
+    end
+  end
+
+  on_linux do
+    on_arm do
+      url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_linux_arm64.tar.gz"
+      sha256 "781a2b93ef6ae255b40098f4b7f789c90e61d2351ff1baab4c995d99881789be"
+    end
+    on_intel do
+      url "https://github.com/hyper-swe/mgit/releases/download/v#{version}/mgit_#{version}_linux_amd64.tar.gz"
+      sha256 "f119573dd3c4194c102742a061f84804d598c7e73a8f612ec2ab06adc8a05934"
     end
   end
 

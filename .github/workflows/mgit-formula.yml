@@ -59,18 +59,18 @@ jobs:
           ln -s "$GITHUB_WORKSPACE" "$taps/homebrew-tap"
           brew trust hyper-swe/tap
 
-      # Style and audit are reported but do not block yet: the current formula
-      # has two known style offences (version declared after license; two
-      # on_macos blocks) that the release automation's text patterns make
-      # unsafe to reorder without its owner. They are tracked in MGIT-306.11;
-      # drop continue-on-error from both when the formula is clean. Two steps,
-      # so a style failure cannot stop the audit from running. The install and
-      # test below DO block.
-      - name: Style (reported, not yet blocking)
-        continue-on-error: true
+      # Style blocks. Audit is reported and not blocking, for one finding the
+      # formula cannot clear: brew audit --strict says `version "x.y.z"` is
+      # redundant with the version scanned from the URL, but the release
+      # automation (update-formula.yml) finds the version by the text
+      # `version "..."` and rewrites it there, and the URLs are built from it.
+      # Dropping the line would break that update; the way out is a change to
+      # the automation (literal URLs), tracked in MGIT-306.11. The install and
+      # test below block.
+      - name: Style
         run: brew style hyper-swe/tap/mgit
 
-      - name: Audit (reported, not yet blocking)
+      - name: Audit (reported, not blocking: the redundant-version finding)
         continue-on-error: true
         run: brew audit --strict --formula hyper-swe/tap/mgit
 
