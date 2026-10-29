@@ -1,0 +1,73 @@
+name: Check mgit formula
+
+# Audits and really installs Formula/mgit.rb on an Apple silicon runner, on
+# every pull request that changes it and on every push to main (which includes
+# the automated release update). The formula depends on libkrunfw from this
+# tap on Apple silicon, and until now nothing exercised that combination: the
+# libkrunfw workflow bottles only libkrunfw.
+#
+# It publishes nothing and installs only on the runner.
+on:
+  pull_request:
+    paths:
+      - Formula/mgit.rb
+      - Formula/libkrunfw.rb
+      - .github/workflows/mgit-formula.yml
+  push:
+    branches: [main]
+    paths:
+      - Formula/mgit.rb
+      - Formula/libkrunfw.rb
+      - .github/workflows/mgit-formula.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mgit:
+    name: Audit and install (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-14, macos-15]
+    runs-on: ${{ matrix.runner }}
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_FROM_API: "1"
+      HOMEBREW_NO_ANALYTICS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Serve this checkout as hyper-swe/tap, so the formulas are installed
+      # exactly as they are in this change, with the one documented setup step.
+      - name: Use this checkout as the hyper-swe/tap tap
+        run: |
+          taps="$(brew --repository)/Library/Taps/hyper-swe"
+          mkdir -p "$taps"
+          rm -f "$taps/homebrew-tap"
+          ln -s "$GITHUB_WORKSPACE" "$taps/homebrew-tap"
+          brew trust hyper-swe/tap
+
+      - name: Style and audit
+        run: |
+          brew style hyper-swe/tap/mgit
+          brew audit --strict --formula hyper-swe/tap/mgit
+
+      # A real install, not a dry run: it resolves the libkrunfw dependency
+      # from this tap, builds it, and links both.
+      - name: Install
+        run: brew install --verbose hyper-swe/tap/mgit
+
+      - name: Test
+        run: brew test --verbose hyper-swe/tap/mgit
+
+      - name: The install carries mgit and its libkrunfw dependency
+        run: |
+          prefix="$(brew --prefix)"
+          test -x "$prefix/bin/mgit" || { echo "::error::mgit is not linked into $prefix/bin"; exit 1; }
+          "$prefix/bin/mgit" --version
+          test -e "$prefix/lib/libkrunfw.5.dylib" || { echo "::error::libkrunfw.5.dylib is not linked into $prefix/lib"; exit 1; }
+          brew list --versions hyper-swe/tap/libkrunfw
