@@ -19,6 +19,12 @@ on:
       - Formula/mgit.rb
       - Formula/libkrunfw.rb
       - .github/workflows/mgit-formula.yml
+  # The release automation pushes the formula update with the repository
+  # token, and a push made with that token starts no workflow run, so the
+  # push trigger above never sees it. This runs after that workflow finishes.
+  workflow_run:
+    workflows: ["Update Formula"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -32,6 +38,8 @@ jobs:
       matrix:
         runner: [macos-14, macos-15]
     runs-on: ${{ matrix.runner }}
+    # A release update that failed has nothing new to check.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     env:
       HOMEBREW_NO_AUTO_UPDATE: "1"
       HOMEBREW_NO_INSTALL_FROM_API: "1"
@@ -55,13 +63,16 @@ jobs:
       # has two known style offences (version declared after license; two
       # on_macos blocks) that the release automation's text patterns make
       # unsafe to reorder without its owner. They are tracked in MGIT-306.11;
-      # drop continue-on-error when the formula is clean. The install and test
-      # below DO block.
-      - name: Style and audit (reported, not yet blocking)
+      # drop continue-on-error from both when the formula is clean. Two steps,
+      # so a style failure cannot stop the audit from running. The install and
+      # test below DO block.
+      - name: Style (reported, not yet blocking)
         continue-on-error: true
-        run: |
-          brew style hyper-swe/tap/mgit
-          brew audit --strict --formula hyper-swe/tap/mgit
+        run: brew style hyper-swe/tap/mgit
+
+      - name: Audit (reported, not yet blocking)
+        continue-on-error: true
+        run: brew audit --strict --formula hyper-swe/tap/mgit
 
       # A real install, not a dry run: it resolves the libkrunfw dependency
       # from this tap, builds it, and links both.
