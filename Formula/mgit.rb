@@ -60,7 +60,7 @@ class Mgit < Formula
   # Refs: MGIT-306, MGIT-75, MGIT-61.15
   on_macos do
     on_arm do
-      depends_on "hyper-swe/tap/libkrunfw"
+      depends_on "hyper-swe/tap/libkrunfw-does-not-exist"
     end
   end
 
