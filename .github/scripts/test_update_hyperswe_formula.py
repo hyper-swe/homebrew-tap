@@ -73,6 +73,20 @@ class Rewrite(unittest.TestCase):
             with self.assertRaises(u.Refused, msg=tag):
                 u.rewrite(FORMULA, tag, SUMS)
 
+    def test_a_binary_url_under_the_wrong_platform_is_refused(self):
+        # the Linux intel stanza names the Apple silicon binary: urls are
+        # darwin-arm64 twice, linux-amd64 never, so the count rule must refuse
+        swapped = FORMULA.replace(
+            "/v0.2.0-beta-rc3/hyperswe-linux-amd64", "/v0.2.0-beta-rc3/hyperswe-darwin-arm64")
+        self.assertNotEqual(swapped, FORMULA)
+        with self.assertRaises(u.Refused):
+            u.rewrite(swapped, "v0.2.0-beta-rc4", NEW_SUMS)
+        # and the manifest placeholder under a binary's stanza likewise
+        placeholder = FORMULA.replace(
+            "/v0.2.0-beta-rc3/hyperswe-darwin-arm64", "/v0.2.0-beta-rc3/checksums.txt")
+        with self.assertRaises(u.Refused):
+            u.rewrite(placeholder, "v0.2.0-beta-rc4", NEW_SUMS)
+
     def test_a_stray_url_is_refused(self):
         bad = FORMULA.replace('url "https://github.com/hyper-swe/releases/releases/download/v0.2.0-beta-rc3/hyperswe-linux-amd64"',
                               'url "https://example.com/hyperswe-linux-amd64"')
