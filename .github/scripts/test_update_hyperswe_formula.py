@@ -126,11 +126,38 @@ class Workflow(unittest.TestCase):
         self.assertGreater(text.index("git push"), text.index("brew audit --strict"))
 
     def test_the_audit_runs_exactly_when_the_push_does(self):
+        # whole-line comparison: a condition with anything added to it, such as
+        # "&& false", is a different line and fails
         _, steps = self.steps()
-        cond = "if: env.CURRENT != 'yes'"
+        found = 0
         for name, body in steps:
             if name.startswith("Audit") or name == "Commit and push":
-                self.assertIn(cond, body, name)
+                found += 1
+                self.assertIn("\n        if: env.CURRENT != 'yes'\n", body, name)
+                self.assertEqual([l for l in body.split("\n") if l.strip().startswith("if:")],
+                                 ["        if: env.CURRENT != 'yes'"], name)
+        self.assertEqual(found, 2)
+
+    def test_the_audit_step_is_exactly_the_reviewed_commands(self):
+        # the whole run block, line for line: nothing may be added after a
+        # command (|| echo, ; true, a redirect) or between them
+        _, steps = self.steps()
+        body = [b for n, b in steps if n.startswith("Audit")][0]
+        run = body.split("        run: |\n", 1)[1].rstrip("\n").split("\n")
+        want = [
+            "          set -euo pipefail",
+            '          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"',
+            '          taps="$(brew --repository)/Library/Taps/hyper-swe"',
+            '          mkdir -p "$taps"',
+            '          ln -sfn "$GITHUB_WORKSPACE" "$taps/homebrew-tap"',
+            "          brew trust hyper-swe/tap || true   # a brew without the command has no trust step",
+            "          brew style hyper-swe/tap/hyperswe",
+            "          brew audit --strict --formula hyper-swe/tap/hyperswe",
+        ]
+        self.assertEqual([l for l in run if l.strip()], want)
+        # and no step key that changes what a failure does
+        for key in ("continue-on-error", "timeout-minutes", "shell:"):
+            self.assertNotIn(key, body)
 
 
 if __name__ == "__main__":
