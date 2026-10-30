@@ -86,6 +86,25 @@ jobs:
           diff Formula/mgit.rb "$copy" | grep '^>' | grep -vq 'url "https://github.com/hyper-swe/mgit/releases/download/v9.9.9/mgit_9.9.9_' && { echo "::error::a changed line is not a rewritten url"; exit 1; } || true
           echo "ok: four url lines rewritten to 9.9.9, nothing else changed"
 
+      # A drifted url format must stop the release update before it pushes:
+      # the rewrite exits 1 and writes nothing, and update-formula.yml asks for
+      # exactly four literal urls for mgit and runs before its push step.
+      - name: A drifted url format is refused before the push
+        run: |
+          set -euo pipefail
+          drift="$(mktemp)"
+          sed 's#https://github.com/hyper-swe/mgit/releases/download/v[0-9.]*/#https://downloads.example.invalid/mgit/#' Formula/mgit.rb > "$drift"
+          before="$(shasum -a 256 "$drift" | cut -d' ' -f1)"
+          rc=0
+          python3 .github/scripts/rewrite_formula_urls.py --expect 4 "$drift" 9.9.9 || rc=$?
+          [ "$rc" -eq 1 ] || { echo "::error::a drifted url format exited $rc, expected 1"; exit 1; }
+          [ "$(shasum -a 256 "$drift" | cut -d' ' -f1)" = "$before" ] || { echo "::error::the refusal still wrote the file"; exit 1; }
+          grep -q -- '--expect 4 "$FORMULA" "$VERSION"' .github/workflows/update-formula.yml || { echo "::error::update-formula.yml does not ask for exactly four urls"; exit 1; }
+          upd="$(grep -n 'rewrite_formula_urls.py --expect 4' .github/workflows/update-formula.yml | head -1 | cut -d: -f1)"
+          push="$(grep -n 'name: Commit and push' .github/workflows/update-formula.yml | head -1 | cut -d: -f1)"
+          [ -n "$upd" ] && [ -n "$push" ] && [ "$upd" -lt "$push" ] || { echo "::error::the url check does not come before the push step"; exit 1; }
+          echo "ok: a drifted format exits 1 with the file untouched, and the check precedes the push"
+
       # A real install, not a dry run: it resolves the libkrunfw dependency
       # from this tap, builds it, and links both.
       - name: Install
