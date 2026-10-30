@@ -195,6 +195,35 @@ class Rewrite(unittest.TestCase):
         with self.assertRaises(u.Refused):
             u.rewrite(odd, "v0.2.0-beta-rc4", NEW_SUMS)
 
+    def test_a_line_that_hides_a_block_change_in_ruby_syntax_is_refused(self):
+        # a character literal ?" and semicolons: Ruby reads this as closing the
+        # Intel block and opening the arm block, so the pair after it would sit
+        # in the wrong stanza; only refusing every line shape the formula is
+        # not made of can catch what a lexer would misread
+        L = FORMULA.split("\n")
+        k = max(n for n, l in enumerate(L) if l == "    on_intel do")
+        L[k + 1:k + 1] = ['      a = ?" ; end ; on_arm do ; b = ?"']
+        with self.assertRaises(u.Refused):
+            u.rewrite("\n".join(L), "v0.2.0-beta-rc4", NEW_SUMS)
+
+    def test_a_whole_line_comment_may_carry_block_words(self):
+        # the comment skip is what lets the formula's own explanatory comments
+        # say "end" and "do"; it is the only way such a line is let through
+        L = FORMULA.split("\n")
+        k = next(n for n, l in enumerate(L) if l == "  on_macos do")
+        L[k:k] = ["  # an end to do: if this end is read as structure the formula is refused"]
+        text, _, _ = u.rewrite("\n".join(L), "v0.2.0-beta-rc4", NEW_SUMS)
+        self.assertIn("# an end to do", text)
+
+    def test_any_other_line_shape_is_refused(self):
+        for extra in ('    depends_on macos: :ventura', '  livecheck do', '    puts "x"',
+                      '  license "MIT"', '      sha256 "abc" # note'):
+            L = FORMULA.split("\n")
+            k = next(n for n, l in enumerate(L) if l == "  def install")
+            L[k:k] = [extra]
+            with self.assertRaises(u.Refused, msg=extra):
+                u.rewrite("\n".join(L), "v0.2.0-beta-rc4", NEW_SUMS)
+
     def test_words_in_strings_and_comments_do_not_refuse_a_supported_formula(self):
         words = FORMULA.replace('desc "', 'desc "Runs agents to do work until the end of if ', 1)
         self.assertNotEqual(words, FORMULA)
