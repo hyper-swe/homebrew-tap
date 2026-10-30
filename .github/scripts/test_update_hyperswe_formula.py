@@ -94,5 +94,44 @@ class Rewrite(unittest.TestCase):
             u.rewrite(bad, "v0.2.0-beta-rc4", NEW_SUMS)
 
 
+WORKFLOW = os.path.join(os.path.dirname(__file__), "..", "workflows", "hyperswe-formula.yml")
+
+
+class Workflow(unittest.TestCase):
+    """A GITHUB_TOKEN push starts no workflow, so the audit must run inside
+    the updater job, before the push, and a failing audit must stop the job."""
+
+    def steps(self):
+        with open(WORKFLOW) as fh:
+            text = fh.read()
+        parts = text.split("      - name: ")[1:]
+        return text, [(p.split("\n")[0], p) for p in parts]
+
+    def test_the_audit_runs_before_the_push_and_blocks_it(self):
+        text, steps = self.steps()
+        names = [n for n, _ in steps]
+        audit = [i for i, (n, _) in enumerate(steps) if n.startswith("Audit")]
+        push = [i for i, n in enumerate(names) if n == "Commit and push"]
+        rewrite = [i for i, n in enumerate(names) if n == "Rewrite the formula"]
+        self.assertEqual((len(audit), len(push), len(rewrite)), (1, 1, 1))
+        self.assertLess(rewrite[0], audit[0])
+        self.assertLess(audit[0], push[0])
+        body = steps[audit[0]][1]
+        self.assertIn("brew style hyper-swe/tap/hyperswe", body)
+        self.assertIn("brew audit --strict --formula hyper-swe/tap/hyperswe", body)
+        self.assertIn("set -euo pipefail", body)
+        self.assertNotIn("continue-on-error", text)
+        self.assertNotIn("|| true", body.replace("brew trust hyper-swe/tap || true", ""))
+        self.assertEqual(text.count("git push"), 1)
+        self.assertGreater(text.index("git push"), text.index("brew audit --strict"))
+
+    def test_the_audit_runs_exactly_when_the_push_does(self):
+        _, steps = self.steps()
+        cond = "if: env.CURRENT != 'yes'"
+        for name, body in steps:
+            if name.startswith("Audit") or name == "Commit and push":
+                self.assertIn(cond, body, name)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -90,6 +90,25 @@ jobs:
         if: env.CURRENT != 'yes'
         run: python3 .github/scripts/update_hyperswe_formula.py Formula/hyperswe.rb "$TAG" "$RUNNER_TEMP/rel/checksums.txt"
 
+      # A push with the workflow token starts no workflow run, so nothing
+      # audits this file after it lands: the audit happens here, before the
+      # push, on the rewritten formula as this checkout serves it. Any failure
+      # fails the job and nothing is pushed.
+      - name: Audit and style the rewritten formula
+        if: env.CURRENT != 'yes'
+        env:
+          HOMEBREW_NO_INSTALL_FROM_API: "1"
+          HOMEBREW_NO_ANALYTICS: "1"
+        run: |
+          set -euo pipefail
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          taps="$(brew --repository)/Library/Taps/hyper-swe"
+          mkdir -p "$taps"
+          ln -sfn "$GITHUB_WORKSPACE" "$taps/homebrew-tap"
+          brew trust hyper-swe/tap || true   # a brew without the command has no trust step
+          brew style hyper-swe/tap/hyperswe
+          brew audit --strict --formula hyper-swe/tap/hyperswe
+
       - name: Commit and push
         if: env.CURRENT != 'yes'
         run: |
