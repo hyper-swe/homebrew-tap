@@ -87,6 +87,39 @@ class Rewrite(unittest.TestCase):
         with self.assertRaises(u.Refused):
             u.rewrite(placeholder, "v0.2.0-beta-rc4", NEW_SUMS)
 
+    def test_a_count_preserving_swap_of_the_two_binaries_is_refused(self):
+        # each binary under the other platform: the asset counts still match
+        # WANT, so only the stanza check can refuse it
+        mac, lin = "/v0.2.0-beta-rc3/hyperswe-darwin-arm64", "/v0.2.0-beta-rc3/hyperswe-linux-amd64"
+        swapped = FORMULA.replace(mac, "/@@MAC@@").replace(lin, mac).replace("/@@MAC@@", lin)
+        self.assertNotEqual(swapped, FORMULA)
+        with self.assertRaises(u.Refused):
+            u.rewrite(swapped, "v0.2.0-beta-rc4", NEW_SUMS)
+
+    def test_a_count_preserving_swap_of_a_binary_and_the_manifest_is_refused(self):
+        # the Apple silicon stanza and the Intel macOS stanza trade assets
+        mac = "/v0.2.0-beta-rc3/hyperswe-darwin-arm64"
+        man = "/v0.2.0-beta-rc3/checksums.txt"
+        lines = FORMULA.split("\n")
+        i = next(n for n, l in enumerate(lines) if mac in l)
+        j = next(n for n, l in enumerate(lines) if man in l)
+        self.assertLess(i, j)
+        lines[i], lines[j] = lines[i].replace(mac, man), lines[j].replace(man, mac)
+        with self.assertRaises(u.Refused):
+            u.rewrite("\n".join(lines), "v0.2.0-beta-rc4", NEW_SUMS)
+
+    def test_a_platform_stanza_with_no_url_and_another_with_two_is_refused(self):
+        # every url is in a stanza that may name its asset and the counts match
+        # WANT, but the manifest sits twice under macOS Intel and never under
+        # Linux ARM: only the one-url-per-stanza rule can refuse it
+        import re
+        intel = re.search(r"    on_intel do\n      url \"[^\"]*/checksums\.txt\"\n      sha256 \"[0-9a-f]*\"\n    end\n", FORMULA).group(0)
+        arm = re.search(r"    on_arm do\n      url \"[^\"]*/checksums\.txt\"\n      sha256 \"[0-9a-f]*\"\n    end\n", FORMULA).group(0)
+        moved = FORMULA.replace(arm, "", 1).replace(intel, intel + intel, 1)
+        self.assertNotEqual(moved, FORMULA)
+        with self.assertRaises(u.Refused):
+            u.rewrite(moved, "v0.2.0-beta-rc4", NEW_SUMS)
+
     def test_a_stray_url_is_refused(self):
         bad = FORMULA.replace('url "https://github.com/hyper-swe/releases/releases/download/v0.2.0-beta-rc3/hyperswe-linux-amd64"',
                               'url "https://example.com/hyperswe-linux-amd64"')

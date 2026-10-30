@@ -25,6 +25,16 @@ GUARD = ('  if (OS.mac? && Hardware::CPU.intel?) || (OS.linux? && Hardware::CPU.
          '    disable! date: "')
 TAG = re.compile(r'^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$')
 WANT = {"hyperswe-darwin-arm64": 1, "hyperswe-linux-amd64": 1, "checksums.txt": 2}
+# which asset each platform stanza may name: the two platforms with a build
+# carry that platform's binary, the other two carry the manifest placeholder
+PLACE = {
+    ("macos", "arm"): "hyperswe-darwin-arm64",
+    ("macos", "intel"): "checksums.txt",
+    ("linux", "arm"): "checksums.txt",
+    ("linux", "intel"): "hyperswe-linux-amd64",
+}
+OS_OPEN = re.compile(r"^  on_(macos|linux) do$")
+CPU_OPEN = re.compile(r"^    on_(arm|intel) do$")
 
 
 class Refused(Exception):
@@ -67,8 +77,15 @@ def rewrite(formula, tag, checksums):
     if GUARD not in formula:
         raise Refused("the platform-guarded disable! line is missing: the formula is not in the supported shape")
     seen = {}
+    stanzas = {}
     out = list(lines)
+    cur_os = cur_cpu = None
     for i, l in enumerate(lines):
+        mo, mc = OS_OPEN.match(l), CPU_OPEN.match(l)
+        if mo:
+            cur_os, cur_cpu = mo.group(1), None
+        elif mc and cur_os:
+            cur_cpu = mc.group(1)
         m = URL.match(l)
         if not m:
             if re.match(r'^\s*url "', l):
@@ -79,6 +96,10 @@ def rewrite(formula, tag, checksums):
             raise Refused("url names %s, which the release does not build for this formula" % asset)
         if i + 1 >= len(lines) or not SHA.match(lines[i + 1]):
             raise Refused("the url line for %s is not followed by its sha256 line" % asset)
+        where = (cur_os, cur_cpu)
+        if PLACE.get(where) != asset:
+            raise Refused("url for %s sits in the %s stanza, which must name %s" % (asset, "/".join(str(x) for x in where), PLACE.get(where)))
+        stanzas[where] = stanzas.get(where, 0) + 1
         seen[asset] = seen.get(asset, 0) + 1
         if asset == "checksums.txt":
             digest = manifest
@@ -91,6 +112,8 @@ def rewrite(formula, tag, checksums):
         out[i + 1] = s.group(1) + digest + s.group(3)
     if seen != WANT:
         raise Refused("expected urls %s, found %s" % (WANT, seen))
+    if stanzas != {k: 1 for k in PLACE}:
+        raise Refused("expected one url in each of the four platform stanzas, found %s" % stanzas)
     out[versions[0]] = VERSION.match(lines[versions[0]]).group(1) + new + '"'
     return "\n".join(out), old, new
 
