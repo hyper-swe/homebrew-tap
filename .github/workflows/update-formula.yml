@@ -80,6 +80,10 @@ jobs:
               fh.write(content)
           PY
 
+          # Literal download urls carry the version as text; follow it. A url
+          # that interpolates #{version} (mtix) is left alone. Refs: MGIT-306
+          python3 .github/scripts/rewrite_formula_urls.py "$FORMULA" "$VERSION"
+
           echo "Updated ${FORMULA} to ${VERSION}"
           cat "$FORMULA"
 

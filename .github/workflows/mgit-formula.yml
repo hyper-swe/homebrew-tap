@@ -13,12 +13,16 @@ on:
       - Formula/mgit.rb
       - Formula/libkrunfw.rb
       - .github/workflows/mgit-formula.yml
+      - .github/workflows/update-formula.yml
+      - .github/scripts/rewrite_formula_urls.py
   push:
     branches: [main]
     paths:
       - Formula/mgit.rb
       - Formula/libkrunfw.rb
       - .github/workflows/mgit-formula.yml
+      - .github/workflows/update-formula.yml
+      - .github/scripts/rewrite_formula_urls.py
   # The release automation pushes the formula update with the repository
   # token, and a push made with that token starts no workflow run, so the
   # push trigger above never sees it. This runs after that workflow finishes.
@@ -59,20 +63,28 @@ jobs:
           ln -s "$GITHUB_WORKSPACE" "$taps/homebrew-tap"
           brew trust hyper-swe/tap
 
-      # Style blocks. Audit is reported and not blocking, for one finding the
-      # formula cannot clear: brew audit --strict says `version "x.y.z"` is
-      # redundant with the version scanned from the URL, but the release
-      # automation (update-formula.yml) finds the version by the text
-      # `version "..."` and rewrites it there, and the URLs are built from it.
-      # Dropping the line would break that update; the way out is a change to
-      # the automation (literal URLs), tracked in MGIT-306.11. The install and
-      # test below block.
       - name: Style
         run: brew style hyper-swe/tap/mgit
 
-      - name: Audit (reported, not blocking; the redundant-version finding)
-        continue-on-error: true
+      - name: Audit
         run: brew audit --strict --formula hyper-swe/tap/mgit
+
+      # The release update rewrites the urls and shas by text. Run its url
+      # rewrite on a copy with a fake version: exactly the four url lines may
+      # change, to that version, and the formula must carry no version line.
+      - name: The release update's url rewrite changes only the four url lines
+        run: |
+          set -euo pipefail
+          if grep -qE '^[[:space:]]*version "' Formula/mgit.rb; then
+            echo "::error::Formula/mgit.rb has a version line; Homebrew reads the version from the urls"; exit 1
+          fi
+          copy="$(mktemp)"
+          cp Formula/mgit.rb "$copy"
+          python3 .github/scripts/rewrite_formula_urls.py "$copy" 9.9.9
+          changed="$(diff Formula/mgit.rb "$copy" | grep -c '^>' || true)"
+          [ "$changed" -eq 4 ] || { echo "::error::expected 4 changed lines, got $changed"; diff Formula/mgit.rb "$copy"; exit 1; }
+          diff Formula/mgit.rb "$copy" | grep '^>' | grep -vq 'url "https://github.com/hyper-swe/mgit/releases/download/v9.9.9/mgit_9.9.9_' && { echo "::error::a changed line is not a rewritten url"; exit 1; } || true
+          echo "ok: four url lines rewritten to 9.9.9, nothing else changed"
 
       # A real install, not a dry run: it resolves the libkrunfw dependency
       # from this tap, builds it, and links both.
