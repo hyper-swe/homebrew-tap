@@ -152,6 +152,55 @@ class Rewrite(unittest.TestCase):
         with self.assertRaises(u.Refused):
             u.rewrite(moved, "v0.2.0-beta-rc4", NEW_SUMS)
 
+    def _pair_below_ends(self, cpu_end, os_end):
+        # the last Linux Intel url/sha256 pair moves to class level, below both
+        # closing lines, which are rewritten as given
+        lin = "/v0.2.0-beta-rc3/hyperswe-linux-amd64"
+        lines = FORMULA.split("\n")
+        i = max(n for n, l in enumerate(lines) if lin in l and l.lstrip().startswith("url"))
+        pair = lines[i:i + 2]
+        del lines[i:i + 2]
+        self.assertEqual(lines[i], "    end")
+        self.assertEqual(lines[i + 1], "  end")
+        lines[i], lines[i + 1] = cpu_end, os_end
+        lines[i + 2:i + 2] = [l.strip().join(["  ", ""]) for l in pair]
+        return "\n".join(lines)
+
+    def test_a_commented_end_is_refused_not_ignored(self):
+        # valid Ruby, and the pair now sits at class level: a closing line with
+        # a trailing comment must not leave the platform context open
+        moved = self._pair_below_ends("    end # on_intel", "  end # on_linux")
+        with self.assertRaises(u.Refused):
+            u.rewrite(moved, "v0.2.0-beta-rc4", NEW_SUMS)
+
+    def test_a_commented_end_in_place_is_refused(self):
+        for old, new in (("    end\n    on_intel do", "    end # arm\n    on_intel do"),
+                         ("    on_intel do", "    on_intel do # intel"),
+                         ("  on_linux do", "  on_linux do # linux")):
+            self.assertIn(old, FORMULA)
+            with self.assertRaises(u.Refused, msg=new):
+                u.rewrite(FORMULA.replace(old, new, 1), "v0.2.0-beta-rc4", NEW_SUMS)
+
+    def test_a_closing_line_at_the_wrong_depth_or_an_unclosed_block_is_refused(self):
+        with self.assertRaises(u.Refused):
+            u.rewrite(FORMULA.replace("\n    end\n    on_intel do", "\n  end\n    on_intel do", 1), "v0.2.0-beta-rc4", NEW_SUMS)
+        with self.assertRaises(u.Refused):
+            u.rewrite(FORMULA.rstrip("\n").rsplit("\n", 1)[0] + "\n", "v0.2.0-beta-rc4", NEW_SUMS)
+
+    def test_an_unread_structural_line_is_refused_even_when_blocks_stay_balanced(self):
+        # a modifier "if" opens no block and closes none, so only the rule that
+        # every block-structure line be a known form can refuse it
+        odd = FORMULA.replace("  def install\n", '  def install\n    odie "no" if OS.mac?\n', 1)
+        self.assertNotEqual(odd, FORMULA)
+        with self.assertRaises(u.Refused):
+            u.rewrite(odd, "v0.2.0-beta-rc4", NEW_SUMS)
+
+    def test_words_in_strings_and_comments_do_not_refuse_a_supported_formula(self):
+        words = FORMULA.replace('desc "', 'desc "Runs agents to do work until the end of if ', 1)
+        self.assertNotEqual(words, FORMULA)
+        text, _, _ = u.rewrite(words, "v0.2.0-beta-rc4", NEW_SUMS)
+        self.assertIn("v0.2.0-beta-rc4", text)
+
     def test_a_stray_url_is_refused(self):
         bad = FORMULA.replace('url "https://github.com/hyper-swe/releases/releases/download/v0.2.0-beta-rc3/hyperswe-linux-amd64"',
                               'url "https://example.com/hyperswe-linux-amd64"')

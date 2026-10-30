@@ -6,7 +6,10 @@ checksums.txt. It writes nothing unless the formula is in the supported shape:
 four url lines, each followed by its sha256 line, naming exactly
 hyperswe-darwin-arm64 once, hyperswe-linux-amd64 once and checksums.txt twice
 (the two platforms with no build carry the manifest as a placeholder), a
-single version line, and the platform-guarded disable! line. A binary's sha256
+single version line, and the platform-guarded disable! line, each url inside
+its own platform block. Block structure is read exactly: a line that opens or
+closes a block must be a known form (no trailing comment, each end at its
+opener's indent) or the formula is refused. A binary's sha256
 comes from checksums.txt; the placeholder's is the sha256 of checksums.txt
 itself. A tag older than the formula's version is refused.
 
@@ -33,10 +36,23 @@ PLACE = {
     ("linux", "arm"): "checksums.txt",
     ("linux", "intel"): "hyperswe-linux-amd64",
 }
-OS_OPEN = re.compile(r"^  on_(macos|linux) do$")
-CPU_OPEN = re.compile(r"^    on_(arm|intel) do$")
-CPU_CLOSE = re.compile(r"^    end$")
-OS_CLOSE = re.compile(r"^  end$")
+# Block structure is read from whole lines, never guessed from their shape: a
+# line that opens or closes a Ruby block (outside strings and comment lines)
+# must be exactly one of the forms below, and each "end" must close the block
+# opened at its own indent. Anything else, such as a trailing comment on an
+# opener or an end, is refused rather than skipped, since a skipped line leaves
+# the platform context wrong.
+STRUCT = re.compile(r"\b(do|end|if|unless|case|begin|while|until|def|class|module|else|elsif|when|rescue|ensure)\b")
+STRING = re.compile(r'"(?:[^"\\]|\\.)*"')
+OPENERS = [
+    (re.compile(r"^class [A-Z][A-Za-z0-9]* < Formula$"), "class"),
+    (re.compile(r"^  on_(macos|linux) do$"), "os"),
+    (re.compile(r"^    on_(arm|intel) do$"), "cpu"),
+    (re.compile(r"^  def install$"), "def"),
+    (re.compile(r"^  test do$"), "test"),
+    (re.compile(r"^  if \(OS\.mac\? && Hardware::CPU\.intel\?\) \|\| \(OS\.linux\? && Hardware::CPU\.arm\?\)$"), "if"),
+]
+CLOSER = re.compile(r"^( *)end$")
 
 
 class Refused(Exception):
@@ -81,17 +97,24 @@ def rewrite(formula, tag, checksums):
     seen = {}
     stanzas = {}
     out = list(lines)
-    cur_os = cur_cpu = None
+    stack = []  # (kind, indent, which)
     for i, l in enumerate(lines):
-        mo, mc = OS_OPEN.match(l), CPU_OPEN.match(l)
-        if mo:
-            cur_os, cur_cpu = mo.group(1), None
-        elif mc and cur_os:
-            cur_cpu = mc.group(1)
-        elif CPU_CLOSE.match(l):
-            cur_cpu = None
-        elif OS_CLOSE.match(l):
-            cur_os = cur_cpu = None
+        bare = STRING.sub('""', l)
+        if l.strip() and not l.lstrip().startswith("#") and STRUCT.search(bare):
+            for rx, kind in OPENERS:
+                mo = rx.match(l)
+                if mo:
+                    stack.append((kind, len(l) - len(l.lstrip()), mo.group(1) if mo.groups() else None))
+                    break
+            else:
+                mc = CLOSER.match(l)
+                if not mc:
+                    raise Refused("line %d is block structure the updater does not read: %s" % (i + 1, l.strip()))
+                if not stack or stack[-1][1] != len(mc.group(1)):
+                    raise Refused("line %d closes a block at the wrong depth" % (i + 1))
+                stack.pop()
+        cur_os = next((w for k, _, w in reversed(stack) if k == "os"), None)
+        cur_cpu = next((w for k, _, w in reversed(stack) if k == "cpu"), None)
         m = URL.match(l)
         if not m:
             if re.match(r'^\s*url "', l):
@@ -116,6 +139,8 @@ def rewrite(formula, tag, checksums):
         out[i] = m.group(1) + BASE + "v" + new + "/" + asset + m.group(4)
         s = SHA.match(lines[i + 1])
         out[i + 1] = s.group(1) + digest + s.group(3)
+    if stack:
+        raise Refused("the formula ends with %d block(s) still open" % len(stack))
     if seen != WANT:
         raise Refused("expected urls %s, found %s" % (WANT, seen))
     if stanzas != {k: 1 for k in PLACE}:
