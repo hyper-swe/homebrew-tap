@@ -35,6 +35,8 @@ PLACE = {
 }
 OS_OPEN = re.compile(r"^  on_(macos|linux) do$")
 CPU_OPEN = re.compile(r"^    on_(arm|intel) do$")
+CPU_CLOSE = re.compile(r"^    end$")
+OS_CLOSE = re.compile(r"^  end$")
 
 
 class Refused(Exception):
@@ -86,6 +88,10 @@ def rewrite(formula, tag, checksums):
             cur_os, cur_cpu = mo.group(1), None
         elif mc and cur_os:
             cur_cpu = mc.group(1)
+        elif CPU_CLOSE.match(l):
+            cur_cpu = None
+        elif OS_CLOSE.match(l):
+            cur_os = cur_cpu = None
         m = URL.match(l)
         if not m:
             if re.match(r'^\s*url "', l):

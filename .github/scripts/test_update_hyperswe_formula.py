@@ -120,6 +120,38 @@ class Rewrite(unittest.TestCase):
         with self.assertRaises(u.Refused):
             u.rewrite(moved, "v0.2.0-beta-rc4", NEW_SUMS)
 
+    def test_a_pair_moved_below_both_platform_ends_is_refused(self):
+        # the last Linux Intel url/sha256 pair moves out of its stanza to below
+        # the closing lines of the Intel block and of on_linux: every count
+        # still matches, so only closing the platform context at each end
+        # can refuse it
+        lin = "/v0.2.0-beta-rc3/hyperswe-linux-amd64"
+        lines = FORMULA.split("\n")
+        i = max(n for n, l in enumerate(lines) if lin in l and l.lstrip().startswith("url"))
+        pair = lines[i:i + 2]
+        del lines[i:i + 2]
+        j = next(n for n, l in enumerate(lines) if l.startswith("  def install"))
+        lines[j - 1:j - 1] = pair
+        moved = "\n".join(lines)
+        self.assertNotEqual(moved, FORMULA)
+        with self.assertRaises(u.Refused):
+            u.rewrite(moved, "v0.2.0-beta-rc4", NEW_SUMS)
+
+    def test_a_pair_moved_below_its_own_cpu_end_is_refused(self):
+        # same move, but only past the Intel block's end, still inside on_linux
+        lin = "/v0.2.0-beta-rc3/hyperswe-linux-amd64"
+        lines = FORMULA.split("\n")
+        i = max(n for n, l in enumerate(lines) if lin in l and l.lstrip().startswith("url"))
+        pair = lines[i:i + 2]
+        del lines[i:i + 2]
+        # lines[i] is now the Intel block's "    end"; put the pair after it
+        self.assertEqual(lines[i], "    end")
+        lines[i + 1:i + 1] = pair
+        moved = "\n".join(lines)
+        self.assertNotEqual(moved, FORMULA)
+        with self.assertRaises(u.Refused):
+            u.rewrite(moved, "v0.2.0-beta-rc4", NEW_SUMS)
+
     def test_a_stray_url_is_refused(self):
         bad = FORMULA.replace('url "https://github.com/hyper-swe/releases/releases/download/v0.2.0-beta-rc3/hyperswe-linux-amd64"',
                               'url "https://example.com/hyperswe-linux-amd64"')
