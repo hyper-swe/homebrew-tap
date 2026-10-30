@@ -80,6 +80,16 @@ jobs:
               fh.write(content)
           PY
 
+          # Literal download urls carry the version as text; follow it. A url
+          # that interpolates #{version} (mtix) is left alone. Refs: MGIT-306
+          # mgit's four urls are literal: if fewer or more are found the format
+          # has drifted, and this step fails before anything is pushed.
+          if [ "$PROJECT" = mgit ]; then
+            python3 .github/scripts/rewrite_formula_urls.py --expect 4 "$FORMULA" "$VERSION"
+          else
+            python3 .github/scripts/rewrite_formula_urls.py "$FORMULA" "$VERSION"
+          fi
+
           echo "Updated ${FORMULA} to ${VERSION}"
           cat "$FORMULA"
 
