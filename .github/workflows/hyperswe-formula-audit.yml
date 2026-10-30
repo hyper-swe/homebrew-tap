@@ -1,0 +1,78 @@
+name: hyperswe formula audit
+
+# Audits and really installs Formula/hyperswe.rb on an Apple silicon runner
+# and an x86-64 Linux runner, the two platforms the release builds for. Every
+# pull request that touches the formula runs it, so the run on the exact head
+# is the evidence. It publishes nothing and installs only on the runner.
+#
+# The scheduled update pushes with the repository token, and a push made with
+# that token starts no workflow, so that update runs the same style and audit
+# itself before it pushes (hyperswe-formula.yml).
+on:
+  pull_request:
+    paths:
+      - Formula/hyperswe.rb
+      - .github/workflows/hyperswe-formula-audit.yml
+  push:
+    branches: [main]
+    paths:
+      - Formula/hyperswe.rb
+      - .github/workflows/hyperswe-formula-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hyperswe:
+    name: Audit and install (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-14, ubuntu-22.04]
+    runs-on: ${{ matrix.runner }}
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_FROM_API: "1"
+      HOMEBREW_NO_ANALYTICS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Put brew on the path (Linux)
+        if: runner.os == 'Linux'
+        run: echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
+
+      # Serve this checkout as hyper-swe/tap, so the formula is installed
+      # exactly as it is in this change, with the one documented setup step.
+      - name: Use this checkout as the hyper-swe/tap tap
+        run: |
+          set -euo pipefail
+          taps="$(brew --repository)/Library/Taps/hyper-swe"
+          mkdir -p "$taps"
+          ln -sfn "$GITHUB_WORKSPACE" "$taps/homebrew-tap"
+          brew trust hyper-swe/tap || true   # a brew without the command has no trust step
+
+      - name: Style
+        run: brew style hyper-swe/tap/hyperswe
+
+      - name: Audit
+        run: brew audit --strict --formula hyper-swe/tap/hyperswe
+
+      # Downloads the release binary and checks it against the formula's sha256.
+      - name: Fetch
+        run: brew fetch --formula hyper-swe/tap/hyperswe
+
+      - name: Install
+        run: brew install --verbose hyper-swe/tap/hyperswe
+
+      - name: Test
+        run: brew test --verbose hyper-swe/tap/hyperswe
+
+      - name: The install carries the binary at the formula's version
+        run: |
+          set -euo pipefail
+          bin="$(brew --prefix)/bin/hyperswe"
+          test -x "$bin" || { echo "::error::hyperswe is not linked into $(brew --prefix)/bin"; exit 1; }
+          "$bin" --version
