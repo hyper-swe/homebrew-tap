@@ -1,0 +1,120 @@
+name: Update hyperswe formula
+
+# Keeps Formula/hyperswe.rb at the latest hyperswe release without a token
+# that reaches into another repository: this workflow runs in the tap, reads
+# the public release with the tap's own token, and pushes to the tap's main.
+# Hourly at an off minute, and on demand to push a release through at once.
+#
+# It builds the formula ONLY from a release whose assets verify: every
+# binary's sha256 against the release's checksums.txt, and checksums.txt's
+# signature bundle against the release workflow's identity at that tag
+# (cosign verify-blob). Any miss fails the run red and changes nothing. A
+# release the formula already carries changes nothing and passes.
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (default: the latest release of hyper-swe/releases)"
+        required: false
+        default: ""
+
+concurrency:
+  group: hyperswe-formula
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-22.04
+    # the one write scope, for the push of Formula/hyperswe.rb to main
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REQUESTED_TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Pick the release
+        run: |
+          tag="$REQUESTED_TAG"
+          if [ -z "$tag" ]; then
+            tag=$(gh api repos/hyper-swe/releases/releases/latest --jq .tag_name)
+          fi
+          case "$tag" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::tag '$tag' must look like vX.Y.Z"; exit 1 ;;
+          esac
+          case "$tag" in
+            *[!0-9A-Za-z.-]*) echo "::error::tag '$tag' has characters outside 0-9 A-Z a-z . -"; exit 1 ;;
+          esac
+          current=$(sed -n 's/^  version "\(.*\)"$/\1/p' Formula/hyperswe.rb)
+          [ -n "$current" ] || { echo "::error::Formula/hyperswe.rb has no version line"; exit 1; }
+          echo "release=$tag formula=v$current"
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+          if [ "$tag" = "v$current" ]; then
+            echo "CURRENT=yes" >> "$GITHUB_ENV"
+          fi
+
+      - name: Download the release assets
+        if: env.CURRENT != 'yes'
+        run: |
+          mkdir -p "$RUNNER_TEMP/rel"
+          gh release download "$TAG" -R hyper-swe/releases -D "$RUNNER_TEMP/rel" \
+            -p checksums.txt -p checksums.txt.bundle -p hyperswe-darwin-arm64 -p hyperswe-linux-amd64
+          ls -l "$RUNNER_TEMP/rel"
+
+      - name: Verify every binary against checksums.txt
+        if: env.CURRENT != 'yes'
+        run: |
+          cd "$RUNNER_TEMP/rel"
+          grep -E '  (hyperswe-darwin-arm64|hyperswe-linux-amd64)$' checksums.txt > binaries.sums
+          [ "$(grep -c . binaries.sums)" -eq 2 ] || { echo "::error::checksums.txt does not list both binaries"; exit 1; }
+          sha256sum -c binaries.sums
+
+      - name: Verify checksums.txt's signature against the release workflow at this tag
+        if: env.CURRENT != 'yes'
+        run: |
+          cd "$RUNNER_TEMP/rel"
+          cosign verify-blob --bundle checksums.txt.bundle checksums.txt \
+            --certificate-identity "https://github.com/hyper-swe/swe/.github/workflows/release.yml@refs/tags/$TAG" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+      - name: Rewrite the formula
+        if: env.CURRENT != 'yes'
+        run: python3 .github/scripts/update_hyperswe_formula.py Formula/hyperswe.rb "$TAG" "$RUNNER_TEMP/rel/checksums.txt"
+
+      # A push with the workflow token starts no workflow run, so nothing
+      # audits this file after it lands: the audit happens here, before the
+      # push, on the rewritten formula as this checkout serves it. Any failure
+      # fails the job and nothing is pushed.
+      - name: Audit and style the rewritten formula
+        if: env.CURRENT != 'yes'
+        env:
+          HOMEBREW_NO_INSTALL_FROM_API: "1"
+          HOMEBREW_NO_ANALYTICS: "1"
+        run: |
+          set -euo pipefail
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          taps="$(brew --repository)/Library/Taps/hyper-swe"
+          mkdir -p "$taps"
+          ln -sfn "$GITHUB_WORKSPACE" "$taps/homebrew-tap"
+          brew trust hyper-swe/tap || true   # a brew without the command has no trust step
+          brew style hyper-swe/tap/hyperswe
+          brew audit --strict --formula hyper-swe/tap/hyperswe
+
+      - name: Commit and push
+        if: env.CURRENT != 'yes'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/hyperswe.rb
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Update hyperswe to $TAG"
+          git push
