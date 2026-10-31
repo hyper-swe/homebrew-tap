@@ -41,26 +41,28 @@ PLACE = {
 # shapes below is refused, so syntax the updater would misread (a character
 # literal, a semicolon, a trailing comment) cannot hide a block change. Each
 # "end" must close the block opened at its own indent.
+# (pattern, kind, the one parent kind it may sit directly under; None = top level)
 OPENERS = [
-    (re.compile(r"^class [A-Z][A-Za-z0-9]* < Formula$"), "class"),
-    (re.compile(r"^  on_(macos|linux) do$"), "os"),
-    (re.compile(r"^    on_(arm|intel) do$"), "cpu"),
-    (re.compile(r"^  def install$"), "def"),
-    (re.compile(r"^  test do$"), "test"),
-    (re.compile(r"^  if \(OS\.mac\? && Hardware::CPU\.intel\?\) \|\| \(OS\.linux\? && Hardware::CPU\.arm\?\)$"), "if"),
+    (re.compile(r"^class [A-Z][A-Za-z0-9]* < Formula$"), "class", None),
+    (re.compile(r"^  on_(macos|linux) do$"), "os", "class"),
+    (re.compile(r"^    on_(arm|intel) do$"), "cpu", "os"),
+    (re.compile(r"^  def install$"), "def", "class"),
+    (re.compile(r"^  test do$"), "test", "class"),
+    (re.compile(r"^  if \(OS\.mac\? && Hardware::CPU\.intel\?\) \|\| \(OS\.linux\? && Hardware::CPU\.arm\?\)$"), "if", "class"),
 ]
 CLOSER = re.compile(r"^( *)end$")
-KNOWN = [re.compile(r) for r in (
-    r'^  desc "[^"\\]*"$',
-    r'^  homepage "[^"\\]*"$',
-    r'^  version "[^"\\]*"$',
-    r'^    depends_on arch: :(arm64|x86_64)$',
-    r'^      url "[^"\\]*"$',
-    r'^      sha256 "[0-9a-f]*"$',
-    r'^    disable! date: "[0-9-]+", because: "[^"\\]*"$',
-    r'^    binary = Dir\["hyperswe-\*"\]\.first$',
-    r'^    bin\.install binary => "hyperswe"$',
-    r'^    assert_match "v#\{version\}", shell_output\("#\{bin\}/hyperswe --version"\)$',
+# (pattern, the block kind the line must sit directly in)
+KNOWN = [(re.compile(r), parent) for r, parent in (
+    (r'^  desc "[^"\\]*"$', "class"),
+    (r'^  homepage "[^"\\]*"$', "class"),
+    (r'^  version "[^"\\]*"$', "class"),
+    (r'^    depends_on arch: :(arm64|x86_64)$', "os"),
+    (r'^      url "[^"\\]*"$', "cpu"),
+    (r'^      sha256 "[0-9a-f]*"$', "cpu"),
+    (r'^    disable! date: "[0-9-]+", because: "[^"\\]*"$', "if"),
+    (r'^    binary = Dir\["hyperswe-\*"\]\.first$', "def"),
+    (r'^    bin\.install binary => "hyperswe"$', "def"),
+    (r'^    assert_match "v#\{version\}", shell_output\("#\{bin\}/hyperswe --version"\)$', "test"),
 )]
 
 
@@ -107,11 +109,18 @@ def rewrite(formula, tag, checksums):
     stanzas = {}
     out = list(lines)
     stack = []  # (kind, indent, which)
+    classes = 0
     for i, l in enumerate(lines):
         if l.strip() and not l.lstrip().startswith("#"):
-            for rx, kind in OPENERS:
+            parent = stack[-1][0] if stack else None
+            for rx, kind, under in OPENERS:
                 mo = rx.match(l)
                 if mo:
+                    if parent != under:
+                        raise Refused("line %d opens a %s block under %s: %s" % (i + 1, kind, parent or "the top level", l.strip()))
+                    if kind == "class" and classes:
+                        raise Refused("line %d is a second class" % (i + 1))
+                    classes += kind == "class"
                     stack.append((kind, len(l) - len(l.lstrip()), mo.group(1) if mo.groups() else None))
                     break
             else:
@@ -120,8 +129,8 @@ def rewrite(formula, tag, checksums):
                     if not stack or stack[-1][1] != len(mc.group(1)):
                         raise Refused("line %d closes a block at the wrong depth" % (i + 1))
                     stack.pop()
-                elif not any(rx.match(l) for rx in KNOWN):
-                    raise Refused("line %d is not a line the updater knows: %s" % (i + 1, l.strip()))
+                elif not any(rx.match(l) and parent == need for rx, need in KNOWN):
+                    raise Refused("line %d is not a line the updater knows, or is in the wrong block: %s" % (i + 1, l.strip()))
         cur_os = next((w for k, _, w in reversed(stack) if k == "os"), None)
         cur_cpu = next((w for k, _, w in reversed(stack) if k == "cpu"), None)
         m = URL.match(l)

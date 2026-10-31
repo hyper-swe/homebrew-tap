@@ -224,6 +224,44 @@ class Rewrite(unittest.TestCase):
             with self.assertRaises(u.Refused, msg=extra):
                 u.rewrite("\n".join(L), "v0.2.0-beta-rc4", NEW_SUMS)
 
+    def _lines(self):
+        return FORMULA.split("\n")
+
+    def test_a_platform_block_moved_inside_a_method_is_refused(self):
+        # every line is an allowed shape and every end matches its opener's
+        # indent, but the Linux block now sits inside def install: only
+        # checking each block's parent can refuse it
+        L = self._lines()
+        a = next(n for n, l in enumerate(L) if l == "  on_linux do")
+        b = next(n for n in range(a, len(L)) if L[n] == "  end")
+        block = L[a:b + 1]
+        del L[a:b + 1]
+        k = next(n for n, l in enumerate(L) if l == "  def install")
+        L[k + 1:k + 1] = block
+        with self.assertRaises(u.Refused):
+            u.rewrite("\n".join(L), "v0.2.0-beta-rc4", NEW_SUMS)
+
+    def test_a_block_or_line_under_the_wrong_parent_is_refused(self):
+        L0 = self._lines()
+        def put(after, extra):
+            L = list(L0)
+            k = next(n for n, l in enumerate(L) if l == after)
+            L[k + 1:k + 1] = extra
+            return "\n".join(L)
+        pair = [l for l in L0 if l.startswith("      url ")][0:1] + [l for l in L0 if l.startswith("      sha256 ")][0:1]
+        cases = {
+            "cpu block directly under the class": put("  def install", ["    on_arm do"] + pair + ["    end"]),
+            "os block inside an os block": put("  on_macos do", ["  on_linux do", "  end"]),
+            "url pair in a test body": put("  test do", pair),
+            "url pair under an os block with no cpu block": put("  on_macos do", pair),
+            "disable line outside the if": put("  def install", ['    disable! date: "2026-10-29", because: "x"']),
+            "install body line under an os block": put("  on_macos do", ['    bin.install binary => "hyperswe"']),
+            "a second class": "\n".join(L0) + "\nclass Other < Formula\nend\n",
+        }
+        for name, text in cases.items():
+            with self.assertRaises(u.Refused, msg=name):
+                u.rewrite(text, "v0.2.0-beta-rc4", NEW_SUMS)
+
     def test_words_in_strings_and_comments_do_not_refuse_a_supported_formula(self):
         words = FORMULA.replace('desc "', 'desc "Runs agents to do work until the end of if ', 1)
         self.assertNotEqual(words, FORMULA)
