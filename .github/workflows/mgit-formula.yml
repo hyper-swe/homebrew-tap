@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-14, macos-15]
+        runner: [macos-15]
     runs-on: ${{ matrix.runner }}
     # A release update that failed has nothing new to check.
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'

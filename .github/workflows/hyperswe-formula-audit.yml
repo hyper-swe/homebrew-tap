@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-14, ubuntu-22.04]
+        runner: [macos-15, ubuntu-22.04]
     runs-on: ${{ matrix.runner }}
     env:
       HOMEBREW_NO_AUTO_UPDATE: "1"
