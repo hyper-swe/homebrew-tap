@@ -1,10 +1,10 @@
 class Libkrunfw < Formula
   desc "Dynamic library bundling a Linux kernel in a convenient storage format"
   homepage "https://github.com/libkrun/libkrunfw"
-  # Upstream publishes three archives for v5.5.0. This formula uses the first:
+  # Upstream publishes three archives for v5.6.2. This formula uses the first:
   #
   #   libkrunfw-prebuilt-aarch64.tgz  the generated kernel.c (the compiled
-  #                                   aarch64 guest kernel, linux-6.12.91,
+  #                                   aarch64 guest kernel, linux-6.12.109,
   #                                   as a C array), bin2cbundle.py, a
   #                                   Makefile and both license texts
   #   libkrunfw-aarch64.tgz           a built Linux aarch64 libkrunfw.so
@@ -24,9 +24,9 @@ class Libkrunfw < Formula
   # if the kernel is later built from source.
   #
   # The sha256 below was computed from the downloaded bytes and matches the
-  # digest GitHub records for this asset on upstream's v5.5.0 release.
-  url "https://github.com/containers/libkrunfw/releases/download/v5.5.0/libkrunfw-prebuilt-aarch64.tgz"
-  sha256 "5bfae6efee63dbdf04a8fac2a69d772d9f900af2f54c4429b4acdfd6d86b9979"
+  # digest GitHub records for this asset on upstream's v5.6.2 release.
+  url "https://github.com/containers/libkrunfw/releases/download/v5.6.2/libkrunfw-prebuilt-aarch64.tgz"
+  sha256 "adef6739cc3bda2a1b57f04c08ccbfdf206a6c831d76b32de1beddc0e7984e86"
   # Equals the SPDX expression "LGPL-2.1-only AND GPL-2.0-only": the library
   # code is LGPL-2.1-only; the bundled kernel and upstream's kernel patches
   # are GPL-2.0-only.
@@ -54,7 +54,7 @@ class Libkrunfw < Formula
   end
 
   def kernel_version
-    "6.12.91"
+    "6.12.109"
   end
 
   def notice
@@ -85,7 +85,7 @@ class Libkrunfw < Formula
            https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-#{kernel_version}.tar.xz
         3. We apply no patches of our own. This library was built from
            upstream's prebuilt kernel image (libkrunfw-prebuilt-aarch64.tgz,
-           object code, sha256 5bfae6efee63dbdf04a8fac2a69d772d9f900af2f54c4429b4acdfd6d86b9979) by the build steps in:
+           object code, sha256 adef6739cc3bda2a1b57f04c08ccbfdf206a6c831d76b32de1beddc0e7984e86) by the build steps in:
            https://github.com/hyper-swe/homebrew-tap/blob/5c359de9b9c9dc7870eed6a44bba6875b9152dbd/Formula/libkrunfw.rb
         4. A copy of items 1 and 2, and of the prebuilt kernel image, kept by us
            beside this library's binaries, with checksums:
