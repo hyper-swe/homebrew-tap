@@ -19,7 +19,7 @@ def fixture(dirpath, tag="arm64_sequoia", payload=b"bottle bytes", rebuild=0):
     doc = {FULL: {
         "formula": {"name": NAME, "pkg_version": VER},
         "bottle": {"root_url": "https://example.invalid", "cellar": ":any", "rebuild": rebuild,
-                   "tags": {tag: {"filename": fname, "local_filename": fname,
+                   "tags": {tag: {"filename": fname.replace("--", "-", 1), "local_filename": fname,
                                    "sha256": hashlib.sha256(payload).hexdigest(),
                                    "tab": {"built_on": {"os": "macOS 26"}}, "all_files": ["lib/libkrunfw.5.dylib"]}}},
     }}
@@ -48,19 +48,23 @@ class Retag(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(self.d, new)))
         with open(os.path.join(self.d, src), "rb") as a, open(os.path.join(self.d, new), "rb") as b:
             self.assertEqual(a.read(), b.read())
-        doc = json.load(open(os.path.join(self.d, new.replace(".tar.gz", ".json"))))
+        with open(os.path.join(self.d, new.replace(".tar.gz", ".json"))) as fh:
+            doc = json.load(fh)
         tags = doc[FULL]["bottle"]["tags"]
         self.assertEqual(list(tags), ["arm64_sonoma"])
-        self.assertEqual(tags["arm64_sonoma"]["filename"], new)
+        # brew writes the url-encoded name (one dash after the formula name) in "filename"
+        self.assertEqual(tags["arm64_sonoma"]["filename"], new.replace("--", "-", 1))
         self.assertEqual(tags["arm64_sonoma"]["local_filename"], new)
         self.assertEqual(tags["arm64_sonoma"]["tab"], {"built_on": {"os": "macOS 26"}})
         r.verify(self.d, "arm64_sonoma")
 
     def test_the_source_artifact_is_left_as_it_was(self):
         src = fixture(self.d)
-        before = open(os.path.join(self.d, src), "rb").read()
+        with open(os.path.join(self.d, src), "rb") as fh:
+            before = fh.read()
         r.retag(self.d, "arm64_sequoia", "arm64_sonoma")
-        self.assertEqual(open(os.path.join(self.d, src), "rb").read(), before)
+        with open(os.path.join(self.d, src), "rb") as fh:
+            self.assertEqual(fh.read(), before)
         r.verify(self.d, "arm64_sequoia")
 
     def test_a_rebuild_number_is_kept_in_the_name(self):
@@ -73,7 +77,8 @@ class Retag(unittest.TestCase):
         r.retag(self.d, "arm64_sequoia", "arm64_sonoma")
         new = src.replace("arm64_sequoia", "arm64_sonoma")
         jpath = os.path.join(self.d, new.replace(".tar.gz", ".json"))
-        good = open(jpath).read()
+        with open(jpath) as fh:
+            good = fh.read()
         # the tarball bytes change after the json was written
         with open(os.path.join(self.d, new), "ab") as fh:
             fh.write(b"x")
@@ -84,7 +89,8 @@ class Retag(unittest.TestCase):
         # the json names the other tag's file
         doc = json.loads(good)
         doc[FULL]["bottle"]["tags"]["arm64_sonoma"]["local_filename"] = src
-        open(jpath, "w").write(json.dumps(doc))
+        with open(jpath, "w") as fh:
+            fh.write(json.dumps(doc))
         with self.assertRaises(r.Refused):
             r.verify(self.d, "arm64_sonoma")
         # the json carries a tag the file name does not
