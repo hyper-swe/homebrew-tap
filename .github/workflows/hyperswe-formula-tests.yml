@@ -1,0 +1,21 @@
+name: hyperswe formula update tests
+
+# The rewrite script's own tests. It publishes nothing and holds no write scope.
+on:
+  pull_request:
+    paths:
+      - .github/scripts/update_hyperswe_formula.py
+      - .github/scripts/test_update_hyperswe_formula.py
+      - .github/scripts/testdata/**
+      - .github/workflows/hyperswe-formula.yml
+      - .github/workflows/hyperswe-formula-tests.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - run: python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
