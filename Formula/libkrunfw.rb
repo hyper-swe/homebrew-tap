@@ -45,7 +45,6 @@ class Libkrunfw < Formula
     # The library must keep running on macOS 14 whatever macOS builds it. The
     # compiler takes its minimum from this variable, and Homebrew clears it from
     # the environment of a build, so only setting it here reaches `make`.
-    ENV["MACOSX_DEPLOYMENT_TARGET"] = "14.0"
     system "make"
     system "make", "PREFIX=#{prefix}", "install"
     prefix.install "LICENSE-GPL-2.0-only", "LICENSE-LGPL-2.1-only"
