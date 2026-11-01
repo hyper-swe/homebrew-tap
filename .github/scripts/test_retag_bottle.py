@@ -111,6 +111,8 @@ class Retag(unittest.TestCase):
                 fh.write(b"x")
             with self.assertRaises(r.Refused):
                 r.retag(d2, "arm64_sequoia", "arm64_sonoma")
+            # refused before anything was written: no half-made destination is left behind
+            self.assertEqual([f for f in os.listdir(d2) if "arm64_sonoma" in f], [])
         finally:
             for f in os.listdir(d2):
                 os.unlink(os.path.join(d2, f))
