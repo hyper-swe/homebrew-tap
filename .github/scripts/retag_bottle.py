@@ -20,6 +20,11 @@ class Refused(Exception):
     pass
 
 
+def _url_name(local):
+    """brew writes the url-encoded file name, one dash after the formula name, in the json's filename."""
+    return local.replace("--", "-", 1)
+
+
 def _sha(path):
     h = hashlib.sha256()
     with open(path, "rb") as fh:
@@ -55,9 +60,10 @@ def verify(dirpath, tag):
     if list(tags) != [tag]:
         raise Refused("%s carries tags %s, want only %s" % (js, sorted(tags), tag))
     t = tags[tag]
-    for key in ("filename", "local_filename"):
-        if t.get(key) != tar:
-            raise Refused("%s says %s is %r, but the file is %s" % (js, key, t.get(key), tar))
+    if t.get("local_filename") != tar:
+        raise Refused("%s says local_filename is %r, but the file is %s" % (js, t.get("local_filename"), tar))
+    if t.get("filename") not in (tar, _url_name(tar)):
+        raise Refused("%s says filename is %r, which is neither the file %s nor its url-encoded form" % (js, t.get("filename"), tar))
     got = _sha(os.path.join(dirpath, tar))
     if t.get("sha256") != got:
         raise Refused("%s says sha256 %s, the file is %s" % (js, t.get("sha256"), got))
@@ -77,7 +83,8 @@ def retag(dirpath, src, dst):
         doc = json.load(fh)
     full, tags = _entry(doc, src)
     entry = dict(tags[src])
-    entry["filename"] = new_tar
+    # keep the source json's convention: the url-encoded name when brew wrote that, else the file name
+    entry["filename"] = _url_name(new_tar) if tags[src].get("filename") == _url_name(tar) and "--" in tar else new_tar
     entry["local_filename"] = new_tar
     doc[full]["bottle"]["tags"] = {dst: entry}
     shutil.copyfile(os.path.join(dirpath, tar), os.path.join(dirpath, new_tar))
