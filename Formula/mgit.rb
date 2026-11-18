@@ -39,8 +39,7 @@ class Mgit < Formula
     on_arm do
       depends_on "hyper-swe/tap/libkrunfw"
       url "https://github.com/hyper-swe/mgit/releases/download/v0.7.7/mgit_0.7.7_darwin_arm64.tar.gz"
-      sha256 "46958b74cdb05683cef3b12c742c68f84e9ae7683db067adf17d8cbba2bd6c9f
-e175efaff33ea88f002952e922bb8e0eff606a8a38baa2f8d5d16ccbc4c76d06"
+      sha256 "e175efaff33ea88f002952e922bb8e0eff606a8a38baa2f8d5d16ccbc4c76d06"
     end
     on_intel do
       url "https://github.com/hyper-swe/mgit/releases/download/v0.7.7/mgit_0.7.7_darwin_amd64.tar.gz"
