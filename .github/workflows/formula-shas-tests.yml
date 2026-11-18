@@ -1,0 +1,35 @@
+name: Formula digest checks
+
+# The digest script's own tests, and a check that every sha256 literal in a
+# formula is one 64-character digest. It publishes nothing and holds no write scope.
+on:
+  pull_request:
+    paths:
+      - Formula/**
+      - .github/scripts/formula_shas.py
+      - .github/scripts/test_formula_shas.py
+      - .github/scripts/testdata/**
+      - .github/workflows/update-formula.yml
+      - .github/workflows/formula-shas-tests.yml
+  push:
+    branches: [main]
+    paths:
+      - Formula/**
+      - .github/scripts/formula_shas.py
+      - .github/workflows/update-formula.yml
+      - .github/workflows/formula-shas-tests.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - run: python3 -m unittest discover -s .github/scripts -p 'test_formula_shas.py' -v
+      - name: Every sha256 literal in a formula is one digest
+        run: |
+          for f in Formula/*.rb; do
+            if grep -q 'sha256 "' "$f"; then python3 .github/scripts/formula_shas.py check "$f"; fi
+          done
