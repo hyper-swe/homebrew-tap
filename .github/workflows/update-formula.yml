@@ -54,11 +54,15 @@ jobs:
         run: |
           VERSION="${TAG#v}"
           FORMULA="Formula/${PROJECT}.rb"
-          get_sha() { grep "$1" checksums.txt | awk '{print $1}'; }
-          DARWIN_ARM64=$(get_sha "darwin_arm64")
-          DARWIN_AMD64=$(get_sha "darwin_amd64")
-          LINUX_ARM64=$(get_sha "linux_arm64")
-          LINUX_AMD64=$(get_sha "linux_amd64")
+          # Each digest is the one listed for <project>_<version>_<os>_<arch>.tar.gz,
+          # never a substring match: checksums.txt lists other files for the same
+          # platform (a libkrunfw archive), and a substring returned two digests.
+          # The script refuses, printing nothing, if an archive is missing or listed twice.
+          SHAS="$(python3 .github/scripts/formula_shas.py pick checksums.txt "$PROJECT" "$VERSION")"
+          DARWIN_ARM64="$(printf '%s\n' "$SHAS" | sed -n 1p)"
+          DARWIN_AMD64="$(printf '%s\n' "$SHAS" | sed -n 2p)"
+          LINUX_ARM64="$(printf '%s\n' "$SHAS" | sed -n 3p)"
+          LINUX_AMD64="$(printf '%s\n' "$SHAS" | sed -n 4p)"
           export VERSION FORMULA DARWIN_ARM64 DARWIN_AMD64 LINUX_ARM64 LINUX_AMD64
 
           sed -i "s/version \".*\"/version \"${VERSION}\"/" "$FORMULA"
@@ -89,6 +93,9 @@ jobs:
           else
             python3 .github/scripts/rewrite_formula_urls.py "$FORMULA" "$VERSION"
           fi
+
+          # Every sha256 literal must be one 64-character digest before anything is pushed.
+          python3 .github/scripts/formula_shas.py check "$FORMULA"
 
           echo "Updated ${FORMULA} to ${VERSION}"
           cat "$FORMULA"
