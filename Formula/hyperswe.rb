@@ -1,7 +1,7 @@
 class Hyperswe < Formula
   desc "Runs AI coding agents through a reviewed loop"
   homepage "https://github.com/hyper-swe/releases"
-  version "0.2.0-beta-rc5"
+  version "0.2.0-beta-rc5.1"
 
   # The release builds two binaries: Apple silicon macOS and x86-64 Linux.
   # Homebrew needs a url on every platform to load a formula at all, so the
@@ -16,12 +16,12 @@ class Hyperswe < Formula
     depends_on arch: :arm64
 
     on_arm do
-      url "https://github.com/hyper-swe/releases/releases/download/v0.2.0-beta-rc5/hyperswe-darwin-arm64"
-      sha256 "a0a91573caee4c1faa500e8742d5e9b42a90fe41dd3b84ef129bced525d44974"
+      url "https://github.com/hyper-swe/releases/releases/download/v0.2.0-beta-rc5.1/hyperswe-darwin-arm64"
+      sha256 "449196d8bfb192f75a871a38eb9718908e9f2b8e2e6e2df54a23fc282e588405"
     end
     on_intel do
-      url "https://github.com/hyper-swe/releases/releases/download/v0.2.0-beta-rc5/checksums.txt"
-      sha256 "f8c7cc8f51fe3f8aab5a37bdbe59118eaae29c8ffb32c487304cc3563da639e3"
+      url "https://github.com/hyper-swe/releases/releases/download/v0.2.0-beta-rc5.1/checksums.txt"
+      sha256 "e24cbaa7e9e7ec914ca33ca2d79e3955f489e91713e6b3bb87df68f45e353188"
     end
   end
 
@@ -29,12 +29,12 @@ class Hyperswe < Formula
     depends_on arch: :x86_64
 
     on_arm do
-      url "https://github.com/hyper-swe/releases/releases/download/v0.2.0-beta-rc5/checksums.txt"
-      sha256 "f8c7cc8f51fe3f8aab5a37bdbe59118eaae29c8ffb32c487304cc3563da639e3"
+      url "https://github.com/hyper-swe/releases/releases/download/v0.2.0-beta-rc5.1/checksums.txt"
+      sha256 "e24cbaa7e9e7ec914ca33ca2d79e3955f489e91713e6b3bb87df68f45e353188"
     end
     on_intel do
-      url "https://github.com/hyper-swe/releases/releases/download/v0.2.0-beta-rc5/hyperswe-linux-amd64"
-      sha256 "bf196c18836cb198b93adc721026103c38fae65c7f1259d87593f9d589f4bce4"
+      url "https://github.com/hyper-swe/releases/releases/download/v0.2.0-beta-rc5.1/hyperswe-linux-amd64"
+      sha256 "45214a8e15e76b61d536e212a6cccbde6bdc8edebaf37437c715b8317b4a75a2"
     end
   end
 
