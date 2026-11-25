@@ -38,23 +38,23 @@ class Mgit < Formula
   on_macos do
     on_arm do
       depends_on "hyper-swe/tap/libkrunfw"
-      url "https://github.com/hyper-swe/mgit/releases/download/v0.7.7/mgit_0.7.7_darwin_arm64.tar.gz"
-      sha256 "e175efaff33ea88f002952e922bb8e0eff606a8a38baa2f8d5d16ccbc4c76d06"
+      url "https://github.com/hyper-swe/mgit/releases/download/v0.8.1/mgit_0.8.1_darwin_arm64.tar.gz"
+      sha256 "e456b5fea1c905cfd17889d52c67733d6d234bcaf4bac2ffbe4d88307ce787b4"
     end
     on_intel do
-      url "https://github.com/hyper-swe/mgit/releases/download/v0.7.7/mgit_0.7.7_darwin_amd64.tar.gz"
-      sha256 "2acd1f6c35b2d8cdced58824d5a5446dbbc32f0426e61aab054b7d9899f1bc28"
+      url "https://github.com/hyper-swe/mgit/releases/download/v0.8.1/mgit_0.8.1_darwin_amd64.tar.gz"
+      sha256 "e46c4acc92353eb59bc41d95fa0774865105264db4dd0fae7b2c9a3313ba3c27"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/hyper-swe/mgit/releases/download/v0.7.7/mgit_0.7.7_linux_arm64.tar.gz"
-      sha256 "3c2658e9173aac32828b4ca7d276be92ec2378eff5c9bfbe7a22ecefd08ade42"
+      url "https://github.com/hyper-swe/mgit/releases/download/v0.8.1/mgit_0.8.1_linux_arm64.tar.gz"
+      sha256 "837972df064de0c4ec6fd995b423cd90ca34f3a5866c7d5fe015b6a35674ff74"
     end
     on_intel do
-      url "https://github.com/hyper-swe/mgit/releases/download/v0.7.7/mgit_0.7.7_linux_amd64.tar.gz"
-      sha256 "40aeaef9c194d9e45df580f4b4f93166549019dbefcbdf43111e2be77145bd75"
+      url "https://github.com/hyper-swe/mgit/releases/download/v0.8.1/mgit_0.8.1_linux_amd64.tar.gz"
+      sha256 "77a2a2ce05b4427fd632d954497da7ea60fb74f3efe90a2a2e712e2d67ca890c"
     end
   end
 
